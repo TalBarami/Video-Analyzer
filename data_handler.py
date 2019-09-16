@@ -10,3 +10,6 @@ class DataHandler:
         self.df.loc[self.idx] = [video, start, end, movement, color]
         self.idx += 1
         print(self.df)
+
+    def save(self):
+        self.df.to_csv('labels.csv')
