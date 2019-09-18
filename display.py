@@ -1,3 +1,4 @@
+from time import sleep
 from tkinter import *
 from tkinter.filedialog import askopenfilename
 from tkinter import ttk
@@ -9,13 +10,18 @@ from data_handler import DataHandler
 
 
 class Display:
-    movements = []
-    colors = []
+    movements = ['a', 'b', 'c']
+    colors = ['Red', 'Green', 'Blue']
     video_types = [('Video files', '*.avi;*.mp4')]
 
     def __init__(self):
-        self.is_playing = False
+        self.video_name = None
+        self.video = None
         self.frames = None
+        self.is_playing = None
+        self.stop_thread = None
+        self.streamThread = None
+
         self.data_handler = DataHandler()
         self.root = Tk()
         self.main()
@@ -32,7 +38,8 @@ class Display:
         def browse_button_click(browse_text):
             filename = askopenfilename(title='Select video file', filetypes=Display.video_types)
             browse_text.set(filename)
-            self.load_video(filename)
+            self.video_name = filename
+            self.load_video()
 
         browseText = StringVar()
         Entry(panel, name='browseEntry', textvariable=browseText, state='readonly', width=90) \
@@ -42,34 +49,67 @@ class Display:
 
         panel.grid(row=0, column=0)
 
+    def load_video(self):
+        self.video = imageio.get_reader(self.video_name)
+        self.frames = []
+        self.stop_thread = True
+        self.is_playing = False
+        self.root.nametowidget('mediaPanel.playButton').config(state=NORMAL)
+
     def init_media_player(self):
         panel = PanedWindow(self.root, name='mediaPanel')
 
         def play_button_click():
+            if self.stop_thread:
+                self.init_thread()
+            self.root.nametowidget('mediaPanel.restartButton').config(state=NORMAL)
             self.is_playing = True
             print('play')
-            return
 
         def pause_button_click():
             self.is_playing = False
             print('pause')
-            return
+
+        # def restart_button_click():
+        #     self.load_video()
+        #     play_button_click()
 
         Button(panel, name='playButton', text='Play', state=DISABLED,
                command=lambda: pause_button_click() if self.is_playing else play_button_click()) \
             .grid(row=1, column=0)
+        # Button(panel, name='restartButton', text='Restart', state=DISABLED,
+        #        command=restart_button_click).grid(row=1, column=1)
 
         Label(panel, name='streamLabel').grid(row=0, column=0)
 
         panel.grid(row=1, column=0)
 
-    def load_video(self, filename):
-        video_name = filename
-        video = imageio.get_reader(video_name)
+    def init_thread(self):
+        if self.streamThread is not None:
+            while self.streamThread.isAlive():
+                sleep(1)
+            self.streamThread = None
+
+        self.stop_thread = False
         self.frames = []
-        for image in video.iter_data():
-            self.frames.append(Image.fromarray(image))
-        self.root.nametowidget('mediaPanel.playButton').config(state=NORMAL)
+
+        streamLabel = self.root.nametowidget('mediaPanel.streamLabel')
+        self.streamThread = threading.Thread(target=self.stream, args=(streamLabel,))
+        self.streamThread.daemon = 1
+        self.streamThread.start()
+
+    def stream(self, label):
+        for image in self.video.iter_data():
+            while not self.is_playing:
+                if self.stop_thread:
+                    return
+                print(self.is_playing, self.stop_thread)
+                sleep(1)
+
+            frame_image = ImageTk.PhotoImage(Image.fromarray(image))
+            self.frames.append(frame_image)
+            label.config(image=frame_image)
+            label.image = frame_image
 
     def init_labelling_entries(self):
         def add_button_click():
@@ -124,19 +164,3 @@ class Display:
 
 if __name__ == '__main__':
     d = Display()
-
-# video_name = self.root.nametowidget('browseEntry').get()
-#         video = imageio.get_reader(video_name)
-#         for image in video.iter_data():
-#             img = Image.fromarray(image)
-#             img = img.resize((512, 512), Image.ANTIALIAS)
-#             frame_image = ImageTk.PhotoImage(img)
-#             label.config(image=frame_image)
-#             label.image = frame_image
-
-
-# streamLabel = Label(self.root, name='streamLabel')
-# streamLabel.grid(row=1, column=0)
-# thread = threading.Thread(target=self.stream, args=(streamLabel,))
-# thread.daemon = 1
-# thread.start()
