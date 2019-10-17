@@ -7,6 +7,9 @@ import imageio
 from PIL import Image, ImageTk
 
 from data_handler import DataHandler
+from timer import Timer
+from video_player import VideoPlayer
+from video_sync import VideoSync
 
 
 class Display:
@@ -16,11 +19,10 @@ class Display:
 
     def __init__(self):
         self.video_names = None
-        self.videos = None
-        self.frames = None
-        self.is_playing = None
-        self.stop_thread = None
-        self.streamThread = None
+        self.videos = []
+        self.video_sync = VideoSync()
+
+        self.timer = None
 
         self.data_handler = DataHandler()
         self.root = Tk()
@@ -34,43 +36,49 @@ class Display:
     def init_file_browser(self):
         panel = PanedWindow(self.root, name='browsePanel')
 
-        def browse_button_click(listbox):
+        def browse_button_click():
             video_names = askopenfilenames(title='Select video file', filetypes=Display.video_types)
             self.video_names = self.root.tk.splitlist(video_names)
 
+            listbox = self.root.nametowidget('browsePanel.videosListbox')
             listbox.delete(0, END)
             for item in self.video_names:
                 listbox.insert(END, item)
+            if len(self.video_names) > 0:
+                self.load_videos()
 
-            self.load_video()
+        Listbox(panel, name='videosListbox', width=90).grid(row=0, column=0)
 
-        listbox = Listbox(panel, name='videosListbox', width=90)
-        listbox.grid(row=0, column=0)
-
-        Button(panel, name='browseButton', text="Browse", command=lambda: browse_button_click(listbox)) \
+        Button(panel, name='browseButton', text="Browse", command=lambda: browse_button_click()) \
             .grid(row=0, column=1)
 
         panel.grid(row=0, column=0)
 
-    def load_video(self):
-        self.videos = [imageio.get_reader(v) for v in self.video_names]
-        self.frames = []
-        self.stop_thread = True
-        self.is_playing = False
+    def create_video(self, video_name):
+        video_panel = self.root.nametowidget('mediaPanel.videoPanel')
+        return VideoPlayer(self.video_sync, video_name, video_panel)
+
+    def load_videos(self):
+        for v in self.videos:
+            v.destroy()
+
+        self.video_sync.reset()
+        self.videos = [self.create_video(v) for v in self.video_names]
         self.root.nametowidget('mediaPanel.playButton').config(state=NORMAL)
 
     def init_media_player(self):
         panel = PanedWindow(self.root, name='mediaPanel')
+        PanedWindow(panel, name='videoPanel').grid(row=0, column=0)
 
         def play_button_click():
-            if self.stop_thread:
-                self.init_stream_thread()
+            if self.video_sync.stop_thread:
+                self.init_stream()
             # self.root.nametowidget('mediaPanel.restartButton').config(state=NORMAL)
-            self.is_playing = True
+            self.video_sync.is_playing = True
             print('play')
 
         def pause_button_click():
-            self.is_playing = False
+            self.video_sync.is_playing = False
             print('pause')
 
         # def restart_button_click():
@@ -78,41 +86,28 @@ class Display:
         #     play_button_click()
 
         Button(panel, name='playButton', text='Play', state=DISABLED,
-               command=lambda: pause_button_click() if self.is_playing else play_button_click()) \
-            .grid(row=1, column=0)
+               command=lambda: pause_button_click() if self.video_sync.is_playing else play_button_click()) \
+            .grid(row=2, column=0)
         # Button(panel, name='restartButton', text='Restart', state=DISABLED,
         #        command=restart_button_click).grid(row=1, column=1)
-
-        Label(panel, name='streamLabel').grid(row=0, column=0)
+        time_var = StringVar()
+        time_label = Label(panel, name='timeLabel', textvariable=time_var)
+        time_label.grid(row=1, column=0)
+        self.timer = Timer(self.video_sync, time_var)
 
         panel.grid(row=1, column=0)
 
-    def init_stream_thread(self):
-        if self.streamThread is not None:
-            while self.streamThread.isAlive():
+    def init_stream(self):
+        if any(v.stream_thread is not None for v in self.videos):
+            while any(v.stream_thread.isAlive() for v in self.videos):
                 sleep(1)
-            self.streamThread = None
+            for v in self.videos:
+                v.stream_thread = None
 
-        self.stop_thread = False
-        self.frames = []
-
-        streamLabel = self.root.nametowidget('mediaPanel.streamLabel')
-        self.streamThread = threading.Thread(target=self.stream, args=(streamLabel,))
-        self.streamThread.daemon = 1
-        self.streamThread.start()
-
-    def stream(self, label):
-        for image in self.videos.iter_data():
-            while not self.is_playing:
-                if self.stop_thread:
-                    return
-                print(self.is_playing, self.stop_thread)
-                sleep(1)
-
-            frame_image = ImageTk.PhotoImage(Image.fromarray(image).resize((256, 256)))
-            self.frames.append(frame_image)
-            label.config(image=frame_image)
-            label.image = frame_image
+        self.video_sync.stop_thread = False
+        for v in self.videos:
+            v.start()
+        self.timer.start()
 
     def init_labelling_entries(self):
         def add_button_click():
