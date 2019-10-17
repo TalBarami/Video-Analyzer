@@ -1,6 +1,6 @@
 from time import sleep
 from tkinter import *
-from tkinter.filedialog import askopenfilename
+from tkinter.filedialog import askopenfilenames
 from tkinter import ttk
 import threading
 import imageio
@@ -15,8 +15,8 @@ class Display:
     video_types = [('Video files', '*.avi;*.mp4')]
 
     def __init__(self):
-        self.video_name = None
-        self.video = None
+        self.video_names = None
+        self.videos = None
         self.frames = None
         self.is_playing = None
         self.stop_thread = None
@@ -24,9 +24,8 @@ class Display:
 
         self.data_handler = DataHandler()
         self.root = Tk()
-        self.main()
 
-    def main(self):
+    def run(self):
         self.init_file_browser()
         self.init_media_player()
         self.init_labelling_entries()
@@ -35,22 +34,26 @@ class Display:
     def init_file_browser(self):
         panel = PanedWindow(self.root, name='browsePanel')
 
-        def browse_button_click(browse_text):
-            filename = askopenfilename(title='Select video file', filetypes=Display.video_types)
-            browse_text.set(filename)
-            self.video_name = filename
+        def browse_button_click(listbox):
+            video_names = askopenfilenames(title='Select video file', filetypes=Display.video_types)
+            self.video_names = self.root.tk.splitlist(video_names)
+
+            listbox.delete(0, END)
+            for item in self.video_names:
+                listbox.insert(END, item)
+
             self.load_video()
 
-        browseText = StringVar()
-        Entry(panel, name='browseEntry', textvariable=browseText, state='readonly', width=90) \
-            .grid(row=0, column=0)
-        Button(panel, name='browseButton', text="Browse", command=lambda: browse_button_click(browseText)) \
+        listbox = Listbox(panel, name='videosListbox', width=90)
+        listbox.grid(row=0, column=0)
+
+        Button(panel, name='browseButton', text="Browse", command=lambda: browse_button_click(listbox)) \
             .grid(row=0, column=1)
 
         panel.grid(row=0, column=0)
 
     def load_video(self):
-        self.video = imageio.get_reader(self.video_name)
+        self.videos = [imageio.get_reader(v) for v in self.video_names]
         self.frames = []
         self.stop_thread = True
         self.is_playing = False
@@ -61,8 +64,8 @@ class Display:
 
         def play_button_click():
             if self.stop_thread:
-                self.init_thread()
-            self.root.nametowidget('mediaPanel.restartButton').config(state=NORMAL)
+                self.init_stream_thread()
+            # self.root.nametowidget('mediaPanel.restartButton').config(state=NORMAL)
             self.is_playing = True
             print('play')
 
@@ -84,7 +87,7 @@ class Display:
 
         panel.grid(row=1, column=0)
 
-    def init_thread(self):
+    def init_stream_thread(self):
         if self.streamThread is not None:
             while self.streamThread.isAlive():
                 sleep(1)
@@ -99,14 +102,14 @@ class Display:
         self.streamThread.start()
 
     def stream(self, label):
-        for image in self.video.iter_data():
+        for image in self.videos.iter_data():
             while not self.is_playing:
                 if self.stop_thread:
                     return
                 print(self.is_playing, self.stop_thread)
                 sleep(1)
 
-            frame_image = ImageTk.PhotoImage(Image.fromarray(image))
+            frame_image = ImageTk.PhotoImage(Image.fromarray(image).resize((256, 256)))
             self.frames.append(frame_image)
             label.config(image=frame_image)
             label.image = frame_image
@@ -164,3 +167,4 @@ class Display:
 
 if __name__ == '__main__':
     d = Display()
+    d.run()
