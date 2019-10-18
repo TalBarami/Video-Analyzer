@@ -6,8 +6,8 @@ class DataHandler:
         self.df = pd.DataFrame(columns=['video', 'start', 'end', 'movement', 'color'])
         self.idx = 0
 
-    def append(self, video, start, end, movement, color):
-        self.df.loc[self.idx] = [video, start, end, movement, color]
+    def append(self, videos, start, end, movement, color):
+        self.df.loc[self.idx] = [' ; '.join(videos), start, end, movement, color]
         self.idx += 1
         print(self.df)
 

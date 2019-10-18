@@ -65,7 +65,7 @@ class Display:
         self.video_sync.reset()
         self.videos = [self.create_video(v) for v in self.video_names]
         self.root.nametowidget('mediaPanel.playButton').config(state=NORMAL)
-        self.video_sync.count = 0
+        self.video_sync.reset()
 
     def init_media_player(self):
         panel = PanedWindow(self.root, name='mediaPanel')
@@ -113,11 +113,11 @@ class Display:
 
     def init_labelling_entries(self):
         def add_button_click():
-            video = self.root.nametowidget('browseEntry').get()
-            start = self.root.nametowidget('startEntry').get()
-            end = self.root.nametowidget('endEntry').get()
-            movement = self.root.nametowidget('movementCombobox').get()
-            color = self.root.nametowidget('colorCombobox').get()
+            video = self.video_names
+            start = self.root.nametowidget('labelingPanel.startEntry').get()
+            end = self.root.nametowidget('labelingPanel.endEntry').get()
+            movement = self.root.nametowidget('labelingPanel.movementCombobox').get()
+            color = self.root.nametowidget('labelingPanel.colorCombobox').get()
 
             self.data_handler.append(video, start, end, movement, color)
 
