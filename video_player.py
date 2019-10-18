@@ -19,22 +19,26 @@ class VideoPlayer:
         self.stream_thread = None
 
     def start(self):
+        self.video_sync.inc()
         self.stream_thread = threading.Thread(target=self.stream, args=(self.stream_label,))
         self.stream_thread.daemon = 1
         self.stream_thread.start()
 
-    def destroy(self):
+    def finish(self):
         self.video_sync.poke()
-        # self.stream_label.destroy()
         self.stream_thread = None
         print('Killed: ' + self.video_name)
+
+    def destroy(self):
+        self.finish()
+        self.stream_label.destroy()
 
     def stream(self, label):
         try:
             for image in self.video.iter_data():
                 while not self.video_sync.is_playing:
                     if self.video_sync.stop_thread:
-                        self.destroy()
+                        self.finish()
                         return
                     print(self.video_sync.is_playing, self.video_sync.stop_thread)
                     sleep(1)
@@ -44,4 +48,4 @@ class VideoPlayer:
                 label.config(image=frame_image)
                 label.image = frame_image
         finally:
-            self.destroy()
+            self.finish()

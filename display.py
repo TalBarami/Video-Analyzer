@@ -65,16 +65,17 @@ class Display:
         self.video_sync.reset()
         self.videos = [self.create_video(v) for v in self.video_names]
         self.root.nametowidget('mediaPanel.playButton').config(state=NORMAL)
+        self.video_sync.count = 0
 
     def init_media_player(self):
         panel = PanedWindow(self.root, name='mediaPanel')
         PanedWindow(panel, name='videoPanel').grid(row=0, column=0)
 
         def play_button_click():
+            self.video_sync.is_playing = True
             if self.video_sync.stop_thread:
                 self.init_stream()
             # self.root.nametowidget('mediaPanel.restartButton').config(state=NORMAL)
-            self.video_sync.is_playing = True
             print('play')
 
         def pause_button_click():
@@ -86,7 +87,8 @@ class Display:
         #     play_button_click()
 
         Button(panel, name='playButton', text='Play', state=DISABLED,
-               command=lambda: pause_button_click() if self.video_sync.is_playing else play_button_click()) \
+               # command=lambda: pause_button_click() if self.video_sync.is_playing else play_button_click()) \
+               command=lambda: play_button_click() if self.video_sync.stop_thread or not self.video_sync.is_playing else pause_button_click()) \
             .grid(row=2, column=0)
         # Button(panel, name='restartButton', text='Restart', state=DISABLED,
         #        command=restart_button_click).grid(row=1, column=1)
@@ -99,15 +101,15 @@ class Display:
 
     def init_stream(self):
         if any(v.stream_thread is not None for v in self.videos):
-            while any(v.stream_thread.isAlive() for v in self.videos):
+            while any(v.stream_thread is not None and v.stream_thread.isAlive() for v in self.videos):
                 sleep(1)
             for v in self.videos:
                 v.stream_thread = None
 
         self.video_sync.stop_thread = False
+        self.timer.start()
         for v in self.videos:
             v.start()
-        self.timer.start()
 
     def init_labelling_entries(self):
         def add_button_click():
