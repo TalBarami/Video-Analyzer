@@ -1,51 +1,74 @@
 import threading
 from time import sleep
-from tkinter import Label
+from time import time as timer
 
-import imageio
-from PIL import ImageTk, Image
+import PIL.Image
+import PIL.ImageTk
+import cv2
 
 
 class VideoPlayer:
-    def __init__(self, video_sync, video_name, video_panel):
-        self.video_sync = video_sync
+    def __init__(self, video_name, label, video_sync):
         self.video_name = video_name
+        self.label = label
+        self.video_sync = video_sync
 
-        self.stream_label = Label(video_panel)
-        self.stream_label.grid(row=int(self.video_sync.count / 2), column=int(self.video_sync.count % 2))
-        self.video_sync.inc()
+        self.size = (256, 256)
+        self.frames = []
 
-        self.video = imageio.get_reader(self.video_name)
+        self.cap = None
         self.stream_thread = None
 
     def start(self):
         self.video_sync.inc()
-        self.stream_thread = threading.Thread(target=self.stream, args=(self.stream_label,))
+        self.stream_thread = threading.Thread(target=self.stream)
         self.stream_thread.daemon = 1
         self.stream_thread.start()
 
     def finish(self):
         self.video_sync.poke()
         self.stream_thread = None
-        print('Killed: ' + self.video_name)
+        if self.cap.isOpened():
+            self.cap.release()
+        print(f'Killed: {self.video_name}')
 
     def destroy(self):
         self.finish()
-        self.stream_label.destroy()
+        self.label.destroy()
 
-    def stream(self, label):
+    def update(self, frame):
+        frame = cv2.cvtColor(cv2.resize(frame, self.size), cv2.COLOR_RGB2BGR)
+        frame_image = PIL.ImageTk.PhotoImage(image=PIL.Image.fromarray(frame))
+        self.frames.append(frame_image)
+        self.label.config(image=frame_image)
+        self.label.image = frame_image
+
+    def stream(self):
         try:
-            for image in self.video.iter_data():
+            self.cap = cv2.VideoCapture(self.video_name)
+            if not self.cap.isOpened():
+                raise ValueError("Unable to open video source", self.video_name)
+            fps = self.cap.get(cv2.CAP_PROP_FPS)
+            fps /= 1000
+
+            while self.cap.isOpened():
                 while not self.video_sync.is_playing:
                     if self.video_sync.stop_thread:
-                        self.finish()
                         return
-                    print(self.video_sync.is_playing, self.video_sync.stop_thread)
-                    sleep(1)
+                    sleep(0.01)
 
-                frame_image = ImageTk.PhotoImage(Image.fromarray(image).resize((256, 256)))
-                # self.frames.append(frame_image)
-                label.config(image=frame_image)
-                label.image = frame_image
+                start = timer()
+                ret, frame = self.cap.read()
+                if ret:
+                    self.update(frame)
+                else:
+                    return
+
+                diff = timer() - start
+                while diff < fps:
+                    diff = timer() - start
         finally:
             self.finish()
+
+    def __del__(self):
+        self.destroy()

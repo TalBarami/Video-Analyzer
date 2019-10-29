@@ -6,14 +6,13 @@ class VideoSync:
         self.lock = Lock()
         self.count = 0
         self.finished = 0
-        self.is_playing = None
-        self.stop_thread = None
+        self.is_playing = True
+        self.stop_thread = False
 
     def inc(self):
         self.lock.acquire()
         try:
-            print('video_sync inc', end=' ')
-            self.print_stats()
+            print(f'video_sync inc: {self.stats()}')
             self.count += 1
         finally:
             self.lock.release()
@@ -21,8 +20,7 @@ class VideoSync:
     def reset(self):
         self.lock.acquire()
         try:
-            print('video_sync reset', end=' ')
-            self.print_stats()
+            print(f'video_sync reset: {self.stats()}')
             self.stop_thread = True
             self.is_playing = False
             self.count = 0
@@ -32,8 +30,7 @@ class VideoSync:
 
     def poke(self):
         self.lock.acquire()
-        print('video_sync poke', end=' ')
-        self.print_stats()
+        print(f'video_sync poke: {self.stats()}')
         try:
             self.finished += 1
             if self.finished == self.count:
@@ -43,5 +40,8 @@ class VideoSync:
         finally:
             self.lock.release()
 
-    def print_stats(self):
-        print(self.count, self.finished, self.is_playing, self.stop_thread)
+    def stats(self):
+        return f'count={self.count}, ' \
+               f'finished={self.finished}, ' \
+               f'is_playing={self.is_playing}, ' \
+               f'stop_thread={self.stop_thread}'

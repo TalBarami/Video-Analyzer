@@ -1,10 +1,7 @@
 from time import sleep
 from tkinter import *
-from tkinter.filedialog import askopenfilenames
 from tkinter import ttk
-import threading
-import imageio
-from PIL import Image, ImageTk
+from tkinter.filedialog import askopenfilenames
 
 from data_handler import DataHandler
 from timer import Timer
@@ -54,18 +51,19 @@ class Display:
 
         panel.grid(row=0, column=0)
 
-    def create_video(self, video_name):
-        video_panel = self.root.nametowidget('mediaPanel.videoPanel')
-        return VideoPlayer(self.video_sync, video_name, video_panel)
-
     def load_videos(self):
         for v in self.videos:
-            v.destroy()
-
+            del v
         self.video_sync.reset()
-        self.videos = [self.create_video(v) for v in self.video_names]
+        self.videos = [self.create_video(v, i) for i, v in enumerate(self.video_names)]
         self.root.nametowidget('mediaPanel.playButton').config(state=NORMAL)
         self.video_sync.reset()
+
+    def create_video(self, video_name, idx):
+        video_panel = self.root.nametowidget('mediaPanel.videoPanel')
+        label = Label(video_panel)
+        label.grid(row=int(idx / 2), column=int(idx % 2))
+        return VideoPlayer(video_name, label, self.video_sync)
 
     def init_media_player(self):
         panel = PanedWindow(self.root, name='mediaPanel')
@@ -75,10 +73,15 @@ class Display:
             self.video_sync.is_playing = True
             if self.video_sync.stop_thread:
                 self.init_stream()
+            if self.timer.paused:
+                self.timer.resume()
+            else:
+                self.timer.start()
             # self.root.nametowidget('mediaPanel.restartButton').config(state=NORMAL)
             print('play')
 
         def pause_button_click():
+            self.timer.pause()
             self.video_sync.is_playing = False
             print('pause')
 
@@ -87,27 +90,27 @@ class Display:
         #     play_button_click()
 
         Button(panel, name='playButton', text='Play', state=DISABLED,
-               # command=lambda: pause_button_click() if self.video_sync.is_playing else play_button_click()) \
-               command=lambda: play_button_click() if self.video_sync.stop_thread or not self.video_sync.is_playing else pause_button_click()) \
+               command=lambda: play_button_click()
+                   if self.video_sync.stop_thread or not self.video_sync.is_playing
+                   else pause_button_click()) \
             .grid(row=2, column=0)
         # Button(panel, name='restartButton', text='Restart', state=DISABLED,
         #        command=restart_button_click).grid(row=1, column=1)
         time_var = StringVar()
         time_label = Label(panel, name='timeLabel', textvariable=time_var)
         time_label.grid(row=1, column=0)
-        self.timer = Timer(self.video_sync, time_var)
+        self.timer = Timer(time_var, self)
 
         panel.grid(row=1, column=0)
 
     def init_stream(self):
         if any(v.stream_thread is not None for v in self.videos):
             while any(v.stream_thread is not None and v.stream_thread.isAlive() for v in self.videos):
-                sleep(1)
+                sleep(0.01)
             for v in self.videos:
                 v.stream_thread = None
 
         self.video_sync.stop_thread = False
-        self.timer.start()
         for v in self.videos:
             v.start()
 
@@ -124,15 +127,12 @@ class Display:
         def validate(action, index, value_if_allowed,
                      prior_value, text, validation_type, trigger_type, widget_name):
             print(action, index, value_if_allowed, prior_value, text, validation_type, trigger_type, widget_name)
-            if value_if_allowed:
-                if len(value_if_allowed) > 2:
-                    return False
-                try:
-                    int(value_if_allowed)
-                    return True
-                except ValueError:
-                    return False
-            else:
+            try:
+                if action == '1':
+                    float(value_if_allowed)
+                return True
+            except ValueError:
+                print('err')
                 return False
 
         vcmd = (self.root.register(validate),
