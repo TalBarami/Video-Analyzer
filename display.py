@@ -1,6 +1,6 @@
 from time import sleep
 from tkinter import *
-from tkinter import ttk
+from tkinter import ttk, messagebox
 from tkinter.filedialog import askopenfilenames
 
 from data_handler import DataHandler
@@ -23,6 +23,7 @@ class Display:
 
         self.data_handler = DataHandler()
         self.root = Tk()
+        self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
 
     def run(self):
         self.init_file_browser()
@@ -41,7 +42,10 @@ class Display:
             listbox.delete(0, END)
             for item in self.video_names:
                 listbox.insert(END, item)
-            if len(self.video_names) > 0:
+            b = len(self.video_names) > 0
+            self.root.nametowidget('mediaPanel.playButton').config(state=NORMAL if b else DISABLED)
+            self.root.nametowidget('labelingPanel.addButton').config(state=NORMAL if b else DISABLED)
+            if b:
                 self.load_videos()
 
         Listbox(panel, name='videosListbox', width=90).grid(row=0, column=0)
@@ -56,7 +60,6 @@ class Display:
             del v
         self.video_sync.reset()
         self.videos = [self.create_video(v, i) for i, v in enumerate(self.video_names)]
-        self.root.nametowidget('mediaPanel.playButton').config(state=NORMAL)
         self.video_sync.reset()
 
     def create_video(self, video_name, idx):
@@ -91,8 +94,8 @@ class Display:
 
         Button(panel, name='playButton', text='Play', state=DISABLED,
                command=lambda: play_button_click()
-                   if self.video_sync.stop_thread or not self.video_sync.is_playing
-                   else pause_button_click()) \
+               if self.video_sync.stop_thread or not self.video_sync.is_playing
+               else pause_button_click()) \
             .grid(row=2, column=0)
         # Button(panel, name='restartButton', text='Restart', state=DISABLED,
         #        command=restart_button_click).grid(row=1, column=1)
@@ -121,18 +124,23 @@ class Display:
             end = self.root.nametowidget('labelingPanel.endEntry').get()
             movement = self.root.nametowidget('labelingPanel.movementCombobox').get()
             color = self.root.nametowidget('labelingPanel.colorCombobox').get()
+            data = [(start, 'start'), (end, 'end'), (movement, 'movement'), (color, 'color')]
+            err = [v for k, v in data if not k]
 
-            self.data_handler.append(video, start, end, movement, color)
+            if len(err) > 0:
+                messagebox.showwarning(f'Missing information', f'Please fill the required information: {",".join(err)}')
+            else:
+                self.data_handler.append(video, start, end, movement, color)
 
         def validate(action, index, value_if_allowed,
                      prior_value, text, validation_type, trigger_type, widget_name):
-            print(action, index, value_if_allowed, prior_value, text, validation_type, trigger_type, widget_name)
+            print(
+                f'action={action}, index={index}, value={value_if_allowed}, prior={prior_value}, text={text}, val_type={validation_type}, trig_type={trigger_type}, widget={widget_name}')
             try:
-                if action == '1':
+                if action == 1:
                     float(value_if_allowed)
                 return True
             except ValueError:
-                print('err')
                 return False
 
         vcmd = (self.root.register(validate),
@@ -154,12 +162,15 @@ class Display:
         ttk.Combobox(panel, name='colorCombobox', state='readonly', width=27, values=Display.colors) \
             .grid(row=3, column=1)
 
-        Button(panel, name='addButton', text='Add', command=lambda: add_button_click()). \
+        Button(panel, name='addButton', text='Add', state=DISABLED, command=lambda: add_button_click()). \
             grid(row=5, column=0)
-        Button(panel, name='saveButton', text='Save', command=lambda: self.data_handler.save()) \
-            .grid(row=5, column=1)
 
         panel.grid(row=1, column=1)
+
+    def on_closing(self):
+        if messagebox.askokcancel("Quit", "Do you want to quit?"):
+            self.data_handler.save()
+            self.root.destroy()
 
 
 if __name__ == '__main__':
