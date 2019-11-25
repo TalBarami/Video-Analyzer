@@ -3,10 +3,10 @@ from tkinter import *
 from tkinter import ttk, messagebox
 from tkinter.filedialog import askopenfilenames
 
-from data_handler import DataHandler
-from timer import Timer
-from video_player import VideoPlayer
-from video_sync import VideoSync
+from src.labeling_app.data_handler import DataHandler
+from src.labeling_app.timer import Timer
+from src.labeling_app.video_player import VideoPlayer
+from src.labeling_app.video_sync import VideoSync
 
 
 class Display:

@@ -13,8 +13,8 @@ class DataHandler:
         print(self.df)
 
     def load(self):
-        self.df = pd.read_csv('labels.csv') if os.path.isfile('labels.csv') else pd.DataFrame(columns=['video', 'start', 'end', 'movement', 'color'])
+        self.df = pd.read_csv('resources/labels.csv') if os.path.isfile('resources/labels.csv') else pd.DataFrame(columns=['video', 'start', 'end', 'movement', 'color'])
         self.idx = self.df.shape[0]
 
     def save(self):
-        self.df.to_csv('labels.csv', index=False)
+        self.df.to_csv('resources/labels.csv', index=False)
