@@ -8,16 +8,23 @@ import cv2
 
 
 class VideoPlayer:
-    def __init__(self, video_name, label, video_sync):
+    def __init__(self, video_name, frame, video_sync, color_function):
         self.video_name = video_name
-        self.label = label
+        self.frame = frame
         self.video_sync = video_sync
+        self.color_function = color_function
 
         self.size = (256, 256)
         self.frames = []
 
         self.cap = None
         self.stream_thread = None
+
+    def color(self):
+        return self.color_function()
+
+    def bg_intersection(self, active):
+        self.frame.config(highlightbackground=('green' if active else 'white'))
 
     def start(self):
         self.video_sync.inc()
@@ -28,20 +35,20 @@ class VideoPlayer:
     def finish(self):
         self.video_sync.poke()
         self.stream_thread = None
-        if self.cap.isOpened():
+        if self.cap and self.cap.isOpened():
             self.cap.release()
         print(f'Killed: {self.video_name}')
 
     def destroy(self):
         self.finish()
-        self.label.destroy()
+        self.frame.destroy()
 
     def update(self, frame):
         frame = cv2.cvtColor(cv2.resize(frame, self.size), cv2.COLOR_RGB2BGR)
         frame_image = PIL.ImageTk.PhotoImage(image=PIL.Image.fromarray(frame))
         self.frames.append(frame_image)
-        self.label.config(image=frame_image)
-        self.label.image = frame_image
+        self.frame.nametowidget('label').config(image=frame_image)
+        self.frame.nametowidget('label').image = frame_image
 
     def stream(self):
         try:
@@ -69,6 +76,3 @@ class VideoPlayer:
                     diff = timer() - start
         finally:
             self.finish()
-
-    def __del__(self):
-        self.destroy()

@@ -10,8 +10,6 @@ from src.labeling_app.video_sync import VideoSync
 
 
 class Display:
-    movements = ['a', 'b', 'c']
-    colors = ['Red', 'Green', 'Blue']
     video_types = [('Video files', '*.avi;*.mp4')]
 
     def __init__(self):
@@ -36,8 +34,10 @@ class Display:
 
         def browse_button_click():
             video_names = askopenfilenames(title='Select video file', filetypes=Display.video_types)
-            self.video_names = self.root.tk.splitlist(video_names)
+            for v in self.videos:
+                v.destroy()
 
+            self.video_names = self.root.tk.splitlist(video_names)
             listbox = self.root.nametowidget('browsePanel.videosListbox')
             listbox.delete(0, END)
             for item in self.video_names:
@@ -56,21 +56,29 @@ class Display:
         panel.grid(row=0, column=0)
 
     def load_videos(self):
-        for v in self.videos:
-            del v
         self.video_sync.reset()
         self.videos = [self.create_video(v, i) for i, v in enumerate(self.video_names)]
         self.video_sync.reset()
 
     def create_video(self, video_name, idx):
-        video_panel = self.root.nametowidget('mediaPanel.videoPanel')
-        label = Label(video_panel)
-        label.grid(row=int(idx / 2), column=int(idx % 2))
-        return VideoPlayer(video_name, label, self.video_sync)
+        videos_panel = self.root.nametowidget('mediaPanel.videosPanel')
+
+        frame = Frame(videos_panel, name=f'video_{idx}', highlightthickness=2)
+        frame.grid(row=int(idx / 2), column=int(idx % 2))
+
+        label = Label(frame, name='label')
+        label.grid(row=0, column=0)
+
+        color_combobox = ttk.Combobox(frame, name=f'color_{idx}', state='readonly', width=27,
+                                      values=self.data_handler.colors)
+        color_combobox.grid(row=1, column=0)
+        color_combobox.current(0)
+
+        return VideoPlayer(video_name, frame, self.video_sync, lambda: color_combobox.get())
 
     def init_media_player(self):
         panel = PanedWindow(self.root, name='mediaPanel')
-        PanedWindow(panel, name='videoPanel').grid(row=0, column=0)
+        PanedWindow(panel, name='videosPanel').grid(row=0, column=0)
 
         def play_button_click():
             self.video_sync.is_playing = True
@@ -80,7 +88,6 @@ class Display:
                 self.timer.resume()
             else:
                 self.timer.start()
-            # self.root.nametowidget('mediaPanel.restartButton').config(state=NORMAL)
             print('play')
 
         def pause_button_click():
@@ -88,17 +95,11 @@ class Display:
             self.video_sync.is_playing = False
             print('pause')
 
-        # def restart_button_click():
-        #     self.load_video()
-        #     play_button_click()
-
         Button(panel, name='playButton', text='Play', state=DISABLED,
                command=lambda: play_button_click()
                if self.video_sync.stop_thread or not self.video_sync.is_playing
                else pause_button_click()) \
             .grid(row=2, column=0)
-        # Button(panel, name='restartButton', text='Restart', state=DISABLED,
-        #        command=restart_button_click).grid(row=1, column=1)
         time_var = StringVar()
         time_label = Label(panel, name='timeLabel', textvariable=time_var)
         time_label.grid(row=1, column=0)
@@ -119,26 +120,22 @@ class Display:
 
     def init_labelling_entries(self):
         def add_button_click():
-            video = self.video_names
-            start = self.root.nametowidget('labelingPanel.startEntry').get()
-            end = self.root.nametowidget('labelingPanel.endEntry').get()
-            movement = self.root.nametowidget('labelingPanel.movementCombobox').get()
-            color = self.root.nametowidget('labelingPanel.colorCombobox').get()
-            data = [(start, 'start'), (end, 'end'), (movement, 'movement'), (color, 'color')]
-            err = [v for k, v in data if not k]
+            try:
+                video = [(v.video_name, v.color()) for v in self.videos]
+                start = self.root.nametowidget('labelingPanel.startEntry').get()
+                end = self.root.nametowidget('labelingPanel.endEntry').get()
+                movement = self.root.nametowidget('labelingPanel.movementCombobox').get()
+                self.data_handler.append(video, start, end, movement)
+            except ValueError as v:
+                messagebox.showerror('Error', v)
 
-            if len(err) > 0:
-                messagebox.showwarning(f'Missing information', f'Please fill the required information: {",".join(err)}')
-            else:
-                self.data_handler.append(video, start, end, movement, color)
-
-        def validate(action, index, value_if_allowed,
+        def validate(action, index, value,
                      prior_value, text, validation_type, trigger_type, widget_name):
             print(
-                f'action={action}, index={index}, value={value_if_allowed}, prior={prior_value}, text={text}, val_type={validation_type}, trig_type={trigger_type}, widget={widget_name}')
+                f'action={action}, index={index}, value={value}, prior={prior_value}, text={text}, val_type={validation_type}, trig_type={trigger_type}, widget={widget_name}')
             try:
-                if action == 1:
-                    float(value_if_allowed)
+                if action == '1':
+                    float(value)
                 return True
             except ValueError:
                 return False
@@ -155,17 +152,19 @@ class Display:
         Entry(panel, name='endEntry', width=30, validate='key', validatecommand=vcmd).grid(row=1, column=1)
 
         Label(panel, name='movementLabel', text='Movement Label:').grid(row=2, column=0)
-        ttk.Combobox(panel, name='movementCombobox', state='readonly', width=27, values=Display.movements) \
+        ttk.Combobox(panel, name='movementCombobox', state='readonly', width=27, values=self.data_handler.movements) \
             .grid(row=2, column=1)
 
-        Label(panel, name='colorLabel', text='Child Color:').grid(row=3, column=0)
-        ttk.Combobox(panel, name='colorCombobox', state='readonly', width=27, values=Display.colors) \
-            .grid(row=3, column=1)
-
-        Button(panel, name='addButton', text='Add', state=DISABLED, command=lambda: add_button_click()). \
+        Button(panel, name='addButton', text='Add', state=DISABLED, command=add_button_click). \
             grid(row=5, column=0)
+        Button(panel, name='editButton', text='View', command=lambda: self.data_handler.table_editor(self.root)). \
+            grid(row=6, column=0)
 
-        panel.grid(row=1, column=1)
+        panel.grid(row=2, column=0)
+
+    def check_for_intersection(self, time):
+        for v in self.videos:
+            v.bg_intersection(self.data_handler.intersect(v.video_name, time))
 
     def on_closing(self):
         if messagebox.askokcancel("Quit", "Do you want to quit?"):
