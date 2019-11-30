@@ -14,7 +14,7 @@ class VideoPlayer:
         self.video_sync = video_sync
         self.color_function = color_function
 
-        self.size = (256, 256)
+        self.size = (420, 420)
         self.frames = []
 
         self.cap = None

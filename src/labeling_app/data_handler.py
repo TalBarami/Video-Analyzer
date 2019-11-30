@@ -53,7 +53,7 @@ class DataHandler:
         window.focus_force()
         window.grab_set()
 
-        table = Table(window, dataframe=self.df, showtoolbar=True, showstatusbar=True)
+        table = Table(window, dataframe=self.df)
         table.show()
 
         def on_closing():

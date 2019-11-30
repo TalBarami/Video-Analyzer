@@ -44,16 +44,13 @@ class Display:
                 listbox.insert(END, item)
             b = len(self.video_names) > 0
             self.root.nametowidget('mediaPanel.playButton').config(state=NORMAL if b else DISABLED)
-            self.root.nametowidget('labelingPanel.addButton').config(state=NORMAL if b else DISABLED)
+            self.root.nametowidget('labelingPanel.buttonsFrame.addButton').config(state=NORMAL if b else DISABLED)
             if b:
                 self.load_videos()
+        Listbox(panel, name='videosListbox', width=80, height=10).pack(fill=BOTH, expand=1)
 
-        Listbox(panel, name='videosListbox', width=90).grid(row=0, column=0)
-
-        Button(panel, name='browseButton', text="Browse", command=lambda: browse_button_click()) \
-            .grid(row=0, column=1)
-
-        panel.grid(row=0, column=0)
+        Button(panel, name='browseButton', text="Browse", command=lambda: browse_button_click()).pack(expand=1)
+        panel.pack(side=TOP, fill=BOTH, expand=1)
 
     def load_videos(self):
         self.video_sync.reset()
@@ -61,26 +58,26 @@ class Display:
         self.video_sync.reset()
 
     def create_video(self, video_name, idx):
-        videos_panel = self.root.nametowidget('mediaPanel.videosPanel')
+        videos_frame = self.root.nametowidget('mediaPanel.videosFrame')
 
-        frame = Frame(videos_panel, name=f'video_{idx}', highlightthickness=2)
-        frame.grid(row=int(idx / 2), column=int(idx % 2))
+        frame = Frame(videos_frame, name=f'video_{idx}', highlightthickness=2)
+        frame.pack(side=LEFT, fill=BOTH, expand=1)
 
-        label = Label(frame, name='label')
-        label.grid(row=0, column=0)
+        Label(frame, name='label').pack(side=TOP, fill=BOTH, expand=1)
 
         color_combobox = ttk.Combobox(frame, name=f'color_{idx}', state='readonly', width=27,
                                       values=self.data_handler.colors)
-        color_combobox.grid(row=1, column=0)
         color_combobox.current(0)
+        color_combobox.pack(side=BOTTOM, fill=X, expand=1)
 
         return VideoPlayer(video_name, frame, self.video_sync, lambda: color_combobox.get())
 
     def init_media_player(self):
         panel = PanedWindow(self.root, name='mediaPanel')
-        PanedWindow(panel, name='videosPanel').grid(row=0, column=0)
+        Frame(panel, name='videosFrame').pack(fill=BOTH, padx=50, expand=1)
 
         def play_button_click():
+            self.root.nametowidget('mediaPanel.playButton').config(text='Pause')
             self.video_sync.is_playing = True
             if self.video_sync.stop_thread:
                 self.init_stream()
@@ -91,21 +88,23 @@ class Display:
             print('play')
 
         def pause_button_click():
+            self.root.nametowidget('mediaPanel.playButton').config(text='Play')
             self.timer.pause()
             self.video_sync.is_playing = False
             print('pause')
+
+        time_var = StringVar()
+        time_label = Label(panel, name='timeLabel', textvariable=time_var)
+        time_label.pack(side=BOTTOM, fill=X, expand=1)
+        self.timer = Timer(time_var, self)
 
         Button(panel, name='playButton', text='Play', state=DISABLED,
                command=lambda: play_button_click()
                if self.video_sync.stop_thread or not self.video_sync.is_playing
                else pause_button_click()) \
-            .grid(row=2, column=0)
-        time_var = StringVar()
-        time_label = Label(panel, name='timeLabel', textvariable=time_var)
-        time_label.grid(row=1, column=0)
-        self.timer = Timer(time_var, self)
+            .pack(side=BOTTOM, expand=1, pady=10)
 
-        panel.grid(row=1, column=0)
+        panel.pack(side=TOP, fill=BOTH, expand=1, pady=10)
 
     def init_stream(self):
         if any(v.stream_thread is not None for v in self.videos):
@@ -122,9 +121,9 @@ class Display:
         def add_button_click():
             try:
                 video = [(v.video_name, v.color()) for v in self.videos]
-                start = self.root.nametowidget('labelingPanel.startEntry').get()
-                end = self.root.nametowidget('labelingPanel.endEntry').get()
-                movement = self.root.nametowidget('labelingPanel.movementCombobox').get()
+                start = self.root.nametowidget('labelingPanel.startFrame.startEntry').get()
+                end = self.root.nametowidget('labelingPanel.endFrame.endEntry').get()
+                movement = self.root.nametowidget('labelingPanel.movementFrame.movementCombobox').get()
                 self.data_handler.append(video, start, end, movement)
             except ValueError as v:
                 messagebox.showerror('Error', v)
@@ -145,22 +144,31 @@ class Display:
 
         panel = PanedWindow(self.root, name='labelingPanel')
 
-        Label(panel, name='startLabel', text='Start:').grid(row=0, column=0)
-        Entry(panel, name='startEntry', width=30, validate='key', validatecommand=vcmd).grid(row=0, column=1)
+        startFrame = Frame(panel, name='startFrame')
+        Label(startFrame, name='startLabel', text='Start:').pack(side=LEFT, fill=X, padx=51)
+        Entry(startFrame, name='startEntry', validate='key', validatecommand=vcmd).pack(side=RIGHT, fill=X, padx=50, expand=1)
+        startFrame.pack(fill=BOTH, expand=1)
+        Frame(panel).pack(pady=5)
 
-        Label(panel, name='endLabel', text='End:').grid(row=1, column=0)
-        Entry(panel, name='endEntry', width=30, validate='key', validatecommand=vcmd).grid(row=1, column=1)
+        endFrame = Frame(panel, name='endFrame')
+        Label(endFrame, name='endLabel', text='End:').pack(side=LEFT, fill=X, padx=53)
+        Entry(endFrame, name='endEntry', validate='key', validatecommand=vcmd).pack(side=RIGHT, fill=X, padx=50, expand=1)
+        endFrame.pack(fill=BOTH, expand=1)
+        Frame(panel).pack(pady=5)
 
-        Label(panel, name='movementLabel', text='Movement Label:').grid(row=2, column=0)
-        ttk.Combobox(panel, name='movementCombobox', state='readonly', width=27, values=self.data_handler.movements) \
-            .grid(row=2, column=1)
+        movementFrame = Frame(panel, name='movementFrame')
+        Label(movementFrame, name='movementLabel', text='Class:').pack(side=LEFT, fill=X, padx=50)
+        ttk.Combobox(movementFrame, name='movementCombobox', state='readonly', values=self.data_handler.movements).pack(side=RIGHT, fill=X, padx=50, expand=1)
+        movementFrame.pack(fill=BOTH, expand=1)
+        Frame(panel).pack(pady=5)
 
-        Button(panel, name='addButton', text='Add', state=DISABLED, command=add_button_click). \
-            grid(row=5, column=0)
-        Button(panel, name='editButton', text='View', command=lambda: self.data_handler.table_editor(self.root)). \
-            grid(row=6, column=0)
+        buttonsFrame = Frame(panel, name='buttonsFrame')
+        Button(buttonsFrame, name='addButton', text='Add', state=DISABLED, command=add_button_click).pack(side=RIGHT, expand=1)
+        Button(buttonsFrame, name='editButton', text='View', command=lambda: self.data_handler.table_editor(self.root)).pack(side=LEFT, expand=1)
+        buttonsFrame.pack(fill=BOTH, expand=1)
+        Frame(panel).pack(pady=10)
 
-        panel.grid(row=2, column=0)
+        panel.pack(side=TOP, fill=X, expand=1)
 
     def check_for_intersection(self, time):
         for v in self.videos:
