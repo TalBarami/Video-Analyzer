@@ -8,7 +8,7 @@ from pandastable import Table
 
 class DataHandler:
     def __init__(self):
-        self.csv_path = '../resources/labels.csv'
+        self.csv_path = 'resources/labels.csv'
 
         self.df = None
         self.idx = 0
@@ -40,6 +40,7 @@ class DataHandler:
         self.idx = self.df.shape[0]
 
     def save(self):
+        print(os.getcwd())
         self.df.to_csv(self.csv_path, index=False)
 
     def intersect(self, video, time):

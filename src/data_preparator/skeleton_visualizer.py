@@ -3,6 +3,8 @@ import shlex
 import json
 import cv2
 from subprocess import check_call
+from os import listdir
+from os.path import isfile, join
 
 POSE_COCO_BODY_PARTS = {
     0:  "Nose",
@@ -46,25 +48,26 @@ def make_skeleton(open_pose, vid_path, skeleton_dst):
     check_call(shlex.split(cmd), universal_newlines=True)
 
 
-def visualize_frame(json_path):
-    img_size = (1024, 1024, 3)
-    img = np.zeros(img_size) * 255
+def visualize_frame(frame, idx, json_folder):
+    json_path = [f for f in listdir(json_folder) if isfile(join(json_folder, f)) and int(f.split('_')[1]) == idx]
+    if len(json_path) == 0:
+        print(f'No json file for frame {idx} in: {json_folder}')
+        return
+    json_path = join(json_folder, json_path[0])
+    # img_size = (1024, 1024, 3)
+    # img = np.zeros(img_size) * 255
     with open(json_path, 'r') as json_file:
         skeletons = json.loads(json_file.read())
         for idx, p in enumerate(skeletons['people']):
             p = p['pose_keypoints_2d']
-            print(len(p))
             c = [(int(p[i]), int(p[i+1])) for i in range(0, len(p), 3)]
             for v1, v2 in POSE_COCO_PAIRS:
                 if not (c[v1][0] + c[v1][0] == 0 or c[v2][0] + c[v2][0] == 0):
                     color = np.array([idx % 3 == 1, idx % 3 == 0, idx % 3 == 0]) * 255
-                    cv2.line(img, c[v1], c[v2], [int(c) for c in color], 3)
-    cv2.imshow("foo", img)
-    cv2.waitKey()
-
+                    cv2.line(frame, c[v1], c[v2], [int(c) for c in color], 3)
 
 if __name__ == '__main__':
-    visualize_frame('C:/Users/talba/Dropbox/1-13/1-13_000000000000_keypoints.json')
+    visualize_frame('C:/Users/Tal Barami/Dropbox/1-16/', 0)
     # make_skeleton('C:/research/openpose-1.5.0-binaries-win64-gpu-python-flir-3d_recommended/bin/OpenPoseDemo.exe',
     #               'C:/Users/Tal Barami/Desktop/code_test/1-12.avi',
     #               'C:/Users/Tal Barami/Desktop/code_test/1-12')

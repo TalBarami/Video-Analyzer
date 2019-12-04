@@ -8,6 +8,7 @@ class VideoSync:
         self.finished = 0
         self.is_playing = True
         self.stop_thread = False
+        self.with_skeleton = False
 
     def inc(self):
         self.lock.acquire()
@@ -39,6 +40,9 @@ class VideoSync:
                 self.lock.acquire()
         finally:
             self.lock.release()
+
+    def skeleton(self):
+        self.with_skeleton = not self.with_skeleton
 
     def stats(self):
         return f'count={self.count}, ' \
