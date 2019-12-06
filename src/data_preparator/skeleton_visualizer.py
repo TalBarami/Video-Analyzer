@@ -7,16 +7,16 @@ from os import listdir
 from os.path import isfile, join
 
 POSE_COCO_BODY_PARTS = {
-    0:  "Nose",
-    1:  "Neck",
-    2:  "RShoulder",
-    3:  "RElbow",
-    4:  "RWrist",
-    5:  "LShoulder",
-    6:  "LElbow",
-    7:  "LWrist",
-    8:  "MidHip",
-    9:  "RHip",
+    0: "Nose",
+    1: "Neck",
+    2: "RShoulder",
+    3: "RElbow",
+    4: "RWrist",
+    5: "LShoulder",
+    6: "LElbow",
+    7: "LWrist",
+    8: "MidHip",
+    9: "RHip",
     10: "RKnee",
     11: "RAnkle",
     12: "LHip",
@@ -48,26 +48,16 @@ def make_skeleton(open_pose, vid_path, skeleton_dst):
     check_call(shlex.split(cmd), universal_newlines=True)
 
 
-def visualize_frame(frame, idx, json_folder):
-    json_path = [f for f in listdir(json_folder) if isfile(join(json_folder, f)) and int(f.split('_')[1]) == idx]
-    if len(json_path) == 0:
-        print(f'No json file for frame {idx} in: {json_folder}')
+def visualize_frame(frame, json_path):
+    if not isfile(json_path):
+        print(f'Error: no such file {json_path}')
         return
-    json_path = join(json_folder, json_path[0])
-    # img_size = (1024, 1024, 3)
-    # img = np.zeros(img_size) * 255
     with open(json_path, 'r') as json_file:
         skeletons = json.loads(json_file.read())
         for idx, p in enumerate(skeletons['people']):
             p = p['pose_keypoints_2d']
-            c = [(int(p[i]), int(p[i+1])) for i in range(0, len(p), 3)]
+            c = [(int(p[i]), int(p[i + 1])) for i in range(0, len(p), 3)]
             for v1, v2 in POSE_COCO_PAIRS:
                 if not (c[v1][0] + c[v1][0] == 0 or c[v2][0] + c[v2][0] == 0):
-                    color = np.array([idx % 3 == 1, idx % 3 == 0, idx % 3 == 0]) * 255
-                    cv2.line(frame, c[v1], c[v2], [int(c) for c in color], 3)
-
-if __name__ == '__main__':
-    visualize_frame('C:/Users/Tal Barami/Dropbox/1-16/', 0)
-    # make_skeleton('C:/research/openpose-1.5.0-binaries-win64-gpu-python-flir-3d_recommended/bin/OpenPoseDemo.exe',
-    #               'C:/Users/Tal Barami/Desktop/code_test/1-12.avi',
-    #               'C:/Users/Tal Barami/Desktop/code_test/1-12')
+                    color = (255 * (idx & 1 > 0), 255 * (idx & 2 > 0), 255 * (idx & 4 > 0))
+                    cv2.line(frame, c[v1], c[v2],color, 3)

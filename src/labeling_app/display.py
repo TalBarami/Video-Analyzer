@@ -1,10 +1,10 @@
+import os
 from time import sleep
 from tkinter import *
 from tkinter import ttk, messagebox
 from tkinter.filedialog import askopenfilenames
 
 from src.labeling_app.data_handler import DataHandler
-from src.labeling_app.timer import Timer
 from src.labeling_app.video_player import VideoPlayer
 from src.labeling_app.video_sync import VideoSync
 
@@ -13,11 +13,9 @@ class Display:
     video_types = [('Video files', '*.avi;*.mp4')]
 
     def __init__(self):
-        self.video_names = None
+        self.video_paths = None
         self.videos = []
         self.video_sync = VideoSync()
-
-        self.timer = None
 
         self.data_handler = DataHandler()
         self.root = Tk()
@@ -27,22 +25,23 @@ class Display:
         self.init_file_browser()
         self.init_media_player()
         self.init_labelling_entries()
+
         self.root.mainloop()
 
     def init_file_browser(self):
         panel = PanedWindow(self.root, name='browsePanel')
 
         def browse_button_click():
-            video_names = askopenfilenames(title='Select video file', filetypes=Display.video_types)
+            video_paths = askopenfilenames(title='Select video file', filetypes=Display.video_types)
             for v in self.videos:
                 v.destroy()
 
-            self.video_names = self.root.tk.splitlist(video_names)
+            self.video_paths = self.root.tk.splitlist(video_paths)
             listbox = self.root.nametowidget('browsePanel.videosListbox')
             listbox.delete(0, END)
-            for item in self.video_names:
+            for item in self.video_paths:
                 listbox.insert(END, item)
-            b = len(self.video_names) > 0
+            b = len(self.video_paths) > 0
             self.root.nametowidget('mediaPanel.playButton').config(state=NORMAL if b else DISABLED)
             self.root.nametowidget('labelingPanel.buttonsFrame.addButton').config(state=NORMAL if b else DISABLED)
             if b:
@@ -54,23 +53,33 @@ class Display:
 
     def load_videos(self):
         self.video_sync.reset()
-        self.videos = [self.create_video(v, i) for i, v in enumerate(self.video_names)]
+        self.videos = [self.create_video_player(v, i) for i, v in enumerate(self.video_paths)]
         self.video_sync.reset()
 
-    def create_video(self, video_name, idx):
+    def create_video_player(self, video_path, idx):
         videos_frame = self.root.nametowidget('mediaPanel.videosFrame')
 
-        frame = Frame(videos_frame, name=f'video_{idx}', highlightthickness=2)
-        frame.pack(side=LEFT, fill=BOTH, expand=1)
+        main_frame = Frame(videos_frame, name=f'video_{idx}', highlightthickness=2)
+        main_frame.pack(side=LEFT, fill=BOTH, expand=1)
 
-        Label(frame, name='label').pack(side=TOP, fill=BOTH, expand=1)
+        Label(main_frame, name='label').pack(side=TOP, fill=BOTH, expand=1)
 
-        color_combobox = ttk.Combobox(frame, name=f'color_{idx}', state='readonly', width=27,
+        data_frame = Frame(main_frame)
+        color_combobox = ttk.Combobox(data_frame, name=f'color_{idx}', state='readonly', width=27,
                                       values=self.data_handler.colors)
         color_combobox.current(0)
-        color_combobox.pack(side=BOTTOM, fill=X, expand=1)
+        color_combobox.pack(side=LEFT, fill=X, expand=1)
 
-        return VideoPlayer(video_name, frame, self.video_sync, lambda: color_combobox.get())
+        time_var = StringVar()
+        Label(data_frame, textvariable=time_var, width=10).pack(side=RIGHT)
+        data_frame.pack(side=LEFT, fill=BOTH, expand=1)
+
+        def time_function(time):
+            time_var.set(time)
+            recorded = self.data_handler.intersect(video_path, time)
+            main_frame.config(highlightbackground=('green' if recorded else 'white'))
+
+        return VideoPlayer(video_path, main_frame, self.video_sync, lambda: color_combobox.get(), time_function=time_function)
 
     def init_media_player(self):
         panel = PanedWindow(self.root, name='mediaPanel')
@@ -81,22 +90,12 @@ class Display:
             self.video_sync.is_playing = True
             if self.video_sync.stop_thread:
                 self.init_stream()
-            if self.timer.paused:
-                self.timer.resume()
-            else:
-                self.timer.start()
             print('play')
 
         def pause_button_click():
             self.root.nametowidget('mediaPanel.playButton').config(text='Play')
-            self.timer.pause()
             self.video_sync.is_playing = False
             print('pause')
-
-        time_var = StringVar()
-        time_label = Label(panel, name='timeLabel', textvariable=time_var)
-        time_label.pack(side=BOTTOM, fill=X, expand=1)
-        self.timer = Timer(time_var, self)
 
         Button(panel, name='playButton', text='Play', state=DISABLED,
                command=lambda: play_button_click()
@@ -164,13 +163,21 @@ class Display:
 
         buttonsFrame = Frame(panel, name='buttonsFrame')
         Button(buttonsFrame, name='addButton', text='Add', state=DISABLED, command=add_button_click).pack(side=RIGHT, expand=1)
-        Button(buttonsFrame, name='editButton', text='View', command=lambda: self.data_handler.table_editor(self.root)).pack(side=LEFT, expand=1)
+        Button(buttonsFrame, name='viewButton', text='View', command=lambda: self.data_handler.table_editor(self.root)).pack(side=LEFT, expand=1)
+        self.video_sync.with_skeleton = BooleanVar()
+        Checkbutton(buttonsFrame, name='skeletonButton', text='With Skeleton', variable=self.video_sync.with_skeleton).pack(side=LEFT, expand=1)
         buttonsFrame.pack(fill=BOTH, expand=1)
         Frame(panel).pack(pady=10)
 
+        ##### TODO: Replace
+        e = Entry(buttonsFrame, name='testE')
+        Button(buttonsFrame, name='test', text='TEST', command=lambda: [v.seek_frame(e.get()) for v in self.videos]).pack()
+        Scale(buttonsFrame, from_=0, to=100, orient=HORIZONTAL).pack()
+        e.pack()
+
         panel.pack(side=TOP, fill=X, expand=1)
 
-    def check_for_intersection(self, time):
+    def check_for_intersection(self, video_path, time):
         for v in self.videos:
             v.bg_intersection(self.data_handler.intersect(v.video_name, time))
 

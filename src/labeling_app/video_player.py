@@ -1,7 +1,8 @@
+import os
 import threading
 from time import sleep
 from time import time as timer
-
+import numpy as np
 import PIL.Image
 import PIL.ImageTk
 import cv2
@@ -10,22 +11,25 @@ from src.data_preparator.skeleton_visualizer import visualize_frame
 
 
 class VideoPlayer:
-    def __init__(self, video_name, frame, video_sync, color_function):
-        self.video_name = video_name
+    def __init__(self, video_path, frame, video_sync, color_function, time_function):
+        self.video_path = video_path
+        self.video_name = os.path.basename(video_path).split('.')[0]
         self.frame = frame
         self.video_sync = video_sync
         self.color_function = color_function
+        self.time_function = time_function
 
         self.size = (420, 420)
 
         self.cap = None
         self.stream_thread = None
 
+        self.cap = cv2.VideoCapture(self.video_path)
+        if not self.cap.isOpened():
+            raise ValueError("Unable to open video source", self.video_path)
+
     def color(self):
         return self.color_function()
-
-    def bg_intersection(self, active):
-        self.frame.config(highlightbackground=('green' if active else 'white'))
 
     def start(self):
         self.video_sync.inc()
@@ -36,12 +40,12 @@ class VideoPlayer:
     def finish(self):
         self.video_sync.poke()
         self.stream_thread = None
-        if self.cap and self.cap.isOpened():
-            self.cap.release()
-        print(f'Killed: {self.video_name}')
+        print(f'Killed: {self.video_path}')
 
     def destroy(self):
         self.finish()
+        if self.cap and self.cap.isOpened():
+            self.cap.release()
         self.frame.destroy()
 
     def update(self, frame):
@@ -52,11 +56,10 @@ class VideoPlayer:
 
     def stream(self):
         try:
-            self.cap = cv2.VideoCapture(self.video_name)
-            if not self.cap.isOpened():
-                raise ValueError("Unable to open video source", self.video_name)
+            self.seek_frame(0)
             fps = self.cap.get(cv2.CAP_PROP_FPS)
-            fps /= 1000
+            print(f'Playing {self.video_name} on {fps} fps, {self.cap.get(cv2.CAP_PROP_FRAME_COUNT)} total frames')
+            delay = 1000 / fps
 
             while self.cap.isOpened():
                 while not self.video_sync.is_playing:
@@ -65,17 +68,21 @@ class VideoPlayer:
                     sleep(0.01)
 
                 start = timer()
+                self.time_function(np.round(self.cap.get(cv2.CAP_PROP_POS_MSEC) / 1000, 1))
                 id = self.cap.get(cv2.CAP_PROP_POS_FRAMES)
                 ret, frame = self.cap.read()
-                if True:
-                    visualize_frame(frame, id, 'C:/Users/Tal Barami/Desktop/code_test/1-16/')
+                if self.video_sync.with_skeleton.get():
+                    visualize_frame(frame, f'C:/Users/talba/Dropbox/{self.video_name}/{self.video_name}_{str(int(id)).zfill(12)}_keypoints.json') # {jsons}/{video_name}/{file_name}
                 if ret:
                     self.update(frame)
                 else:
                     return
 
-                diff = timer() - start
-                while diff < fps:
-                    diff = timer() - start
+                while(timer() - start) * 1000 < delay:
+                    sleep(0.001)
+                    # cv2.waitKey(1)
         finally:
             self.finish()
+
+    def seek_frame(self, pos):
+        self.cap.set(cv2.CAP_PROP_POS_FRAMES, float(pos))
