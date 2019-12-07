@@ -1,9 +1,14 @@
 import os
-from time import sleep
 from tkinter import *
 from tkinter import ttk, messagebox
 from tkinter.filedialog import askopenfilenames
+from os.path import join
+import PIL.Image
+import PIL.ImageTk
+import cv2
+import numpy as np
 
+from src.data_preparator.skeleton_visualizer import visualize_frame
 from src.labeling_app.data_handler import DataHandler
 from src.labeling_app.video_player import VideoPlayer
 from src.labeling_app.video_sync import VideoSync
@@ -15,7 +20,7 @@ class Display:
     def __init__(self):
         self.video_paths = None
         self.videos = []
-        self.video_sync = VideoSync()
+        self.video_sync = VideoSync(self)
 
         self.data_handler = DataHandler()
         self.root = Tk()
@@ -32,6 +37,7 @@ class Display:
         panel = PanedWindow(self.root, name='browsePanel')
 
         def browse_button_click():
+            self.video_sync.stop_thread = True
             video_paths = askopenfilenames(title='Select video file', filetypes=Display.video_types)
             for v in self.videos:
                 v.destroy()
@@ -52,17 +58,19 @@ class Display:
         panel.pack(side=TOP, fill=BOTH, expand=1)
 
     def load_videos(self):
-        self.video_sync.reset()
+        self.video_sync.stop_thread = False
+        self.video_sync.is_playing = False
         self.videos = [self.create_video_player(v, i) for i, v in enumerate(self.video_paths)]
-        self.video_sync.reset()
 
     def create_video_player(self, video_path, idx):
+        video_name = os.path.basename(video_path).split('.')[0]
         videos_frame = self.root.nametowidget('mediaPanel.videosFrame')
 
         main_frame = Frame(videos_frame, name=f'video_{idx}', highlightthickness=2)
         main_frame.pack(side=LEFT, fill=BOTH, expand=1)
 
-        Label(main_frame, name='label').pack(side=TOP, fill=BOTH, expand=1)
+        video_label = Label(main_frame, name='label')
+        video_label.pack(side=TOP, fill=BOTH, expand=1)
 
         data_frame = Frame(main_frame)
         color_combobox = ttk.Combobox(data_frame, name=f'color_{idx}', state='readonly', width=27,
@@ -74,47 +82,46 @@ class Display:
         Label(data_frame, textvariable=time_var, width=10).pack(side=RIGHT)
         data_frame.pack(side=LEFT, fill=BOTH, expand=1)
 
-        def time_function(time):
+        def update_function(cap, frame):
+            id = cap.get(cv2.CAP_PROP_POS_FRAMES)
+            if self.video_sync.with_skeleton.get():
+                filename = f'{video_name}_{str(int(id)).zfill(12)}_keypoints.json'
+                visualize_frame(frame, join(self.data_handler.skeleton_folder, video_name, filename))
+
+            time = np.round(cap.get(cv2.CAP_PROP_POS_MSEC) / 1000, 1)
             time_var.set(time)
+
             recorded = self.data_handler.intersect(video_path, time)
             main_frame.config(highlightbackground=('green' if recorded else 'white'))
+            size = (480, 480)
+            frame = cv2.cvtColor(cv2.resize(frame, size), cv2.COLOR_RGB2BGR)
+            frame_image = PIL.ImageTk.PhotoImage(image=PIL.Image.fromarray(frame))
+            video_label.config(image=frame_image)
+            video_label.image = frame_image
 
-        return VideoPlayer(video_path, main_frame, self.video_sync, lambda: color_combobox.get(), time_function=time_function)
+        def destroy_function():
+            main_frame.destroy()
+
+        return VideoPlayer(video_path, self.video_sync,
+                           update_function=update_function,
+                           color_function=lambda: color_combobox.get(),
+                           destroy_function=destroy_function)
+
+    def set_play_button_name(self):
+        self.root.nametowidget('mediaPanel.playButton').config(text='Pause' if self.video_sync.is_playing else 'Play')
 
     def init_media_player(self):
         panel = PanedWindow(self.root, name='mediaPanel')
         Frame(panel, name='videosFrame').pack(fill=BOTH, padx=50, expand=1)
 
         def play_button_click():
-            self.root.nametowidget('mediaPanel.playButton').config(text='Pause')
-            self.video_sync.is_playing = True
-            if self.video_sync.stop_thread:
-                self.init_stream()
-            print('play')
+            self.video_sync.is_playing = not self.video_sync.is_playing
+            self.set_play_button_name()
 
-        def pause_button_click():
-            self.root.nametowidget('mediaPanel.playButton').config(text='Play')
-            self.video_sync.is_playing = False
-            print('pause')
-
-        Button(panel, name='playButton', text='Play', state=DISABLED,
-               command=lambda: play_button_click()
-               if self.video_sync.stop_thread or not self.video_sync.is_playing
-               else pause_button_click()) \
+        Button(panel, name='playButton', text='Play', state=DISABLED, command=play_button_click)\
             .pack(side=BOTTOM, expand=1, pady=10)
 
         panel.pack(side=TOP, fill=BOTH, expand=1, pady=10)
-
-    def init_stream(self):
-        if any(v.stream_thread is not None for v in self.videos):
-            while any(v.stream_thread is not None and v.stream_thread.isAlive() for v in self.videos):
-                sleep(0.01)
-            for v in self.videos:
-                v.stream_thread = None
-
-        self.video_sync.stop_thread = False
-        for v in self.videos:
-            v.start()
 
     def init_labelling_entries(self):
         def add_button_click():
@@ -163,23 +170,17 @@ class Display:
 
         buttonsFrame = Frame(panel, name='buttonsFrame')
         Button(buttonsFrame, name='addButton', text='Add', state=DISABLED, command=add_button_click).pack(side=RIGHT, expand=1)
-        Button(buttonsFrame, name='viewButton', text='View', command=lambda: self.data_handler.table_editor(self.root)).pack(side=LEFT, expand=1)
+        Button(buttonsFrame, name='viewButton', text='View Data', command=lambda: self.data_handler.table_editor(self.root)).pack(side=LEFT, expand=1)
         self.video_sync.with_skeleton = BooleanVar()
         Checkbutton(buttonsFrame, name='skeletonButton', text='With Skeleton', variable=self.video_sync.with_skeleton).pack(side=LEFT, expand=1)
+        e = Entry(buttonsFrame, name='seekEntry')
+        e.pack(side=LEFT, expand=1)
+        Button(buttonsFrame, name='seekButton', text='Jump',
+               command=lambda: [v.seek_time(e.get()) for v in self.videos]).pack(side=LEFT, expand=1)
         buttonsFrame.pack(fill=BOTH, expand=1)
         Frame(panel).pack(pady=10)
 
-        ##### TODO: Replace
-        e = Entry(buttonsFrame, name='testE')
-        Button(buttonsFrame, name='test', text='TEST', command=lambda: [v.seek_frame(e.get()) for v in self.videos]).pack()
-        Scale(buttonsFrame, from_=0, to=100, orient=HORIZONTAL).pack()
-        e.pack()
-
         panel.pack(side=TOP, fill=X, expand=1)
-
-    def check_for_intersection(self, video_path, time):
-        for v in self.videos:
-            v.bg_intersection(self.data_handler.intersect(v.video_name, time))
 
     def on_closing(self):
         if messagebox.askokcancel("Quit", "Do you want to quit?"):
