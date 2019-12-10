@@ -54,12 +54,13 @@ def visualize_frame(frame, json_path):
         return
     with open(json_path, 'r') as json_file:
         skeletons = json.loads(json_file.read())
-        for idx, p in enumerate(skeletons['people']):
+        for p in skeletons['people']:
+            pid = p['person_id']
             p = p['pose_keypoints_2d']
             c = [(int(p[i]), int(p[i + 1])) for i in range(0, len(p), 3)]
             for v1, v2 in POSE_COCO_PAIRS:
                 if not (c[v1][0] + c[v1][0] == 0 or c[v2][0] + c[v2][0] == 0):
-                    color = (255 * (idx & 1 > 0), 255 * (idx & 2 > 0), 255 * (idx & 4 > 0))
+                    color = (255 * (pid & 1 > 0), 255 * (pid & 2 > 0), 255 * (pid & 4 > 0))
                     cv2.line(frame, c[v1], c[v2], color, 3)
 
 
