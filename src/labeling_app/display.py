@@ -73,23 +73,33 @@ class Display:
         video_label.pack(side=TOP, fill=BOTH, expand=1)
 
         data_frame = Frame(main_frame)
-        color_combobox = ttk.Combobox(data_frame, name=f'color_{idx}', state='readonly', width=27,
+
+        color_frame = Frame(data_frame)
+        Label(color_frame, text='Child Color:').pack(side=LEFT, fill=X, expand=0)
+        color_combobox = ttk.Combobox(color_frame, name=f'color_{idx}', state='readonly', width=27,
                                       values=self.data_handler.colors)
         color_combobox.current(0)
-        color_combobox.pack(side=LEFT, fill=X, expand=1)
+        color_combobox.pack(side=RIGHT, fill=X, expand=1, padx=20)
+        color_frame.pack(side=LEFT, fill=X, expand=1)
 
-        time_var = StringVar()
+        skeleton_var = DoubleVar()
+        skeleton_frame = Frame(data_frame)
+        Label(skeleton_frame, text='Skeleton adjust:').pack(side=LEFT, fill=X, expand=0)
+        Entry(skeleton_frame, textvariable=skeleton_var).pack(side=RIGHT, fill=X, expand=1, padx=20)
+        skeleton_frame.pack(side=LEFT, fill=X, expand=1)
+
+        time_var = DoubleVar()
         Label(data_frame, textvariable=time_var, width=10).pack(side=RIGHT)
         data_frame.pack(side=LEFT, fill=BOTH, expand=1)
 
-        def update_function(cap, frame):
-            id = cap.get(cv2.CAP_PROP_POS_FRAMES)
+        def update_function(frame, frame_number, current_time, duration):
             if self.video_sync.with_skeleton.get():
-                filename = f'{video_name}_{str(int(id)).zfill(12)}_keypoints.json'
+                filename = f'{video_name}_{str(int(frame_number) + int(skeleton_var.get())).zfill(12)}_keypoints.json'
                 visualize_frame(frame, join(self.data_handler.skeleton_folder, video_name, filename))
 
-            time = np.round(cap.get(cv2.CAP_PROP_POS_MSEC) / 1000, 1)
-            time_var.set(time)
+            time = np.round(current_time / 1000, 1)
+            duration = np.round(duration, 1)
+            time_var.set(f'{time}/{duration}')
 
             recorded = self.data_handler.intersect(video_path, time)
             main_frame.config(highlightbackground=('green' if recorded else 'white'))

@@ -9,7 +9,7 @@ from pandastable import Table
 class DataHandler:
     def __init__(self):
         self.csv_path = 'resources/labels.csv'
-        self.skeleton_folder = ''
+        self.skeleton_folder = 'C:/Users/Tal Barami/Desktop/jsons/a'
 
         self.df = None
         self.idx = 0

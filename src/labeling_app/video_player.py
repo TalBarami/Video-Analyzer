@@ -21,7 +21,8 @@ class VideoPlayer:
             raise ValueError("Unable to open video source", self.video_path)
         self.fps = self.cap.get(cv2.CAP_PROP_FPS)
         self.frames_count = self.cap.get(cv2.CAP_PROP_FRAME_COUNT)
-        print(f'Playing {self.video_path} on {self.fps} fps, total {self.frames_count} frames')
+        self.duration = self.frames_count / self.fps
+        print(f'Playing {self.video_path} on {self.fps} fps, total {self.frames_count} frames, duration {self.duration}')
 
         self.stream_thread = threading.Thread(target=self.stream)
         self.stream_thread.daemon = 1
@@ -50,7 +51,7 @@ class VideoPlayer:
                 while (timer() - start) * 1000 < delay:
                     sleep(0.001)
                     # cv2.waitKey(1)
-                self.update_function(self.cap, frame)
+                self.update_function(frame, self.cap.get(cv2.CAP_PROP_POS_FRAMES), self.cap.get(cv2.CAP_PROP_POS_MSEC), self.duration)
             else:
                 sleep(0.001)
 
