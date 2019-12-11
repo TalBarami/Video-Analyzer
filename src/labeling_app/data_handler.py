@@ -14,7 +14,7 @@ class DataHandler:
         self.df = None
         self.idx = 0
         self.movements = ['Hand flapping', 'Tapping', 'Fingers', 'Clapping', 'Body rocking', 'Other']
-        self.colors = ['None', 'Red', 'Green', 'Blue', 'Yellow', 'Purple']
+        self.colors = ['None', 'Unidentified' 'Red', 'Green', 'Blue', 'Yellow', 'Teal', 'Purple']
 
         self.load()
 

@@ -123,17 +123,21 @@ def match_frames(ps, prevs):
         found[new_id] = (p, new_w)
 
 
-def set_person_id(json_src, json_dst, n=5):
+def set_person_id(json_src, json_dst, n=5, verbose=100):
     file_names = [f for f in listdir(json_src) if isfile(join(json_src, f))]
-    src_path = lambda i: join(json_src, file_names[i])
-    dst_path = lambda i: join(json_dst, file_names[i])
+
+    def src_path(i):
+        join(json_src, file_names[i])
+
+    def dst_path(i):
+        join(json_dst, file_names[i])
 
     jsons = [read_json(src_path(0))]
     for idx, p in enumerate(jsons[0]['people']):
         p['person_id'] = idx
 
     for i in range(1, len(file_names)):
-        if i % 100 == 0:
+        if (i - 1) % verbose == 0:
             print(f'frame: {i}')
         jsons.append(read_json(src_path(i)))
         people = jsons[i]['people']
