@@ -62,7 +62,10 @@ class VideoPlayer:
 
     def seek_time(self, time):
         self.lock.acquire()
-        print(f'video {self.video_name} is jumping to time: {time}')
-        time = float(time)
-        self.cap.set(cv2.CAP_PROP_POS_MSEC, time * 1000)
+        try:
+            time = float(time)
+            self.cap.set(cv2.CAP_PROP_POS_MSEC, time * 1000)
+            print(f'video {self.video_name} is jumping to time: {time}, frame {self.cap.get(cv2.CAP_PROP_POS_FRAMES)}')
+        except ValueError as v:
+            print(f'Error: {v}')
         self.lock.release()

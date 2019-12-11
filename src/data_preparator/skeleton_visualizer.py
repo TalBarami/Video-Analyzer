@@ -74,24 +74,53 @@ def write_json(j, dst):
         json.dump(j, f)
 
 
-def center_of_mass(p):
-    size = len(p['pose_keypoints_2d'])
-    return np.sum([p['pose_keypoints_2d'][x] for x in range(0, size, 3)]) / (size / 3), np.sum([p['pose_keypoints_2d'][y] for y in range(1, size, 3)]) / (size / 3)
-
-
 def distance(p1, p2):
-    k1 = np.array(p1['pose_keypoints_2d'])
-    k2 = np.array(p2['pose_keypoints_2d'])
-    return np.sum(np.power(k1 - k2, 2))
+    k1 = np.array([float(c) for c in p1['pose_keypoints_2d']])
+    k2 = np.array([float(c) for c in p2['pose_keypoints_2d']])
+
+    xy1 = []
+    xy2 = []
+    for i in range(0, len(p1['pose_keypoints_2d']), 3):
+        if k1[i + 2] < 0.1 or k2[i + 1] < 0.1:
+            continue
+        xy1 += [k1[i], k1[i + 1]]
+        xy2 += [k2[i], k2[i + 1]]
+
+    return np.sum(np.power(np.array(xy1) - np.array(xy2), 2))
 
 
 def find_closest(p, prevs):
-    ids = set([p['person_id'] for p in prevs])
+    ids = set([pi['person_id'] for pi in prevs])
     id_weights = dict([(i, 0) for i in ids])
     for pi in prevs:
         id_weights[pi['person_id']] += (1 / distance(p, pi))
 
-    return max(id_weights, key=id_weights.get)
+    selected_id = max(id_weights, key=id_weights.get)
+    selected_weight = id_weights[selected_id]
+    return selected_id, selected_weight
+
+
+def match_frames(ps, prevs):
+    def gen_id(ps):
+        ids = [p['person_id'] for p in ps]
+        i = 0
+        while i in ids:
+            i += 1
+        return i
+
+    found = {}
+    for p in ps:
+        new_id, new_w = find_closest(p, prevs)
+        if new_id in found:
+            p_old, w_old = found[new_id]
+            generated_id = gen_id(ps + prevs)
+            if w_old > new_w:
+                p['person_id'] = generated_id
+                continue
+            else:
+                p_old['person_id'] = generated_id
+        p['person_id'] = new_id
+        found[new_id] = (p, new_w)
 
 
 def set_person_id(json_src, json_dst, n=5):
@@ -104,26 +133,19 @@ def set_person_id(json_src, json_dst, n=5):
         p['person_id'] = idx
 
     for i in range(1, len(file_names)):
+        if i % 100 == 0:
+            print(f'frame: {i}')
         jsons.append(read_json(src_path(i)))
+        people = jsons[i]['people']
 
         prevs = []
-        for j in range(np.min(n, i)):
+        for j in range(min(n, i)):
             for p in jsons[j]['people']:
                 prevs.append(p)
-
-        jsons[i]['person_id'] = find_closest(jsons[i], prevs)
-
-        a = list(set([p['person_id'] for p in prevs]))
-        b = [p['person_id'] for p in jsons[i]['people']]
-        a.sort()
-        b.sort()
-        if not a == b:
-            print("CRITICAL ERROR!!! NOT ENOUGH PREVS! 2 PEOPLE WITH THE SAME ID")
-            print(a)
-            print(b)
+        match_frames(people, prevs)
 
         write_json(jsons[i], dst_path(i))
 
 
 if __name__ == '__main__':
-    set_person_id('E:/jsons/1', 'E:/jsons/1/a')
+    set_person_id('C:/Users/Tal Barami/Desktop/jsons/1', 'C:/Users/Tal Barami/Desktop/jsons/a/1')

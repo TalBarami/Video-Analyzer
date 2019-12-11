@@ -82,7 +82,7 @@ class Display:
         color_combobox.pack(side=RIGHT, fill=X, expand=1, padx=20)
         color_frame.pack(side=LEFT, fill=X, expand=1)
 
-        skeleton_var = DoubleVar()
+        skeleton_var = IntVar()
         skeleton_frame = Frame(data_frame)
         Label(skeleton_frame, text='Skeleton adjust:').pack(side=LEFT, fill=X, expand=0)
         Entry(skeleton_frame, textvariable=skeleton_var).pack(side=RIGHT, fill=X, expand=1, padx=20)
@@ -94,8 +94,11 @@ class Display:
 
         def update_function(frame, frame_number, current_time, duration):
             if self.video_sync.with_skeleton.get():
-                filename = f'{video_name}_{str(int(frame_number) + int(skeleton_var.get())).zfill(12)}_keypoints.json'
-                visualize_frame(frame, join(self.data_handler.skeleton_folder, video_name, filename))
+                try:
+                    filename = f'{video_name}_{str(int(frame_number) + int(skeleton_var.get())).zfill(12)}_keypoints.json'
+                    visualize_frame(frame, join(self.data_handler.skeleton_folder, video_name, filename))
+                except TclError as e:
+                    print(f'Error: {e}')
 
             time = np.round(current_time / 1000, 1)
             duration = np.round(duration, 1)
