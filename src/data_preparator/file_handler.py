@@ -37,17 +37,21 @@ def decrypt(y):
 #                 copy2(file, join('some_path', cid))  # TODO: Make sure we don't get the same file name twice.
 
 
-def find_and_copy(ids):
+def find_and_copy(ids, src, dst):
     for cid in ids:
-        for root, dirs, files in os.walk('PATH_TO_BE_PASSED'):
+        for root, dirs, files in os.walk(src):
             found = [join(root, d) for d in dirs if d == cid]
             if any(found):
                 for f in found:
-                    copy_tree(f, join('ANOTHER_PATH_TO_BE_PASSED', cid))
+                    dst_path = join(dst, cid)
+                    if os.path.exists(dst_path):
+                        dst_path += _
+                    print(f'copy from {f} to {join(dst, cid)}')
+                    copy_tree(f, join(dst, cid))
 
-# name = 'a1'
-# path = 'C:/Users/talba/Desktop/root'
-# for root, dirs, files in os.walk(path):
-#     found = [join(root, dir) for dir in dirs if dir == name]
-#     if len(found) > 0:
-#         result = [glob.glob(f'{f}/**', recursive=True) for f in found]
+if __name__ == '__main__':
+    with open('D:/TalBarami/openpose/research/ids.txt') as f:
+        ids = f.read().splitlines()
+    src = 'E:/ADOS_Video_New_System'
+    dst = 'D:/TalBarami/vids'
+    find_and_copy(ids, src, dst)
