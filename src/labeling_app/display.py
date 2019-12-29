@@ -21,6 +21,7 @@ class Display:
         self.video_paths = None
         self.videos = []
         self.video_sync = VideoSync(self)
+        self.skeleton_folder = 'D:/TalBarami/skeletons'
 
         self.data_handler = DataHandler()
         self.root = Tk()
@@ -80,23 +81,24 @@ class Display:
                                       values=self.data_handler.colors)
         color_combobox.current(0)
         color_combobox.pack(side=RIGHT, fill=X, expand=1, padx=20)
-        color_frame.pack(side=LEFT, fill=X, expand=1)
+        color_frame.pack(side=TOP, fill=X, expand=1)
 
         skeleton_var = IntVar()
         skeleton_frame = Frame(data_frame)
         Label(skeleton_frame, text='Skeleton adjust:').pack(side=LEFT, fill=X, expand=0)
         Entry(skeleton_frame, textvariable=skeleton_var).pack(side=RIGHT, fill=X, expand=1, padx=20)
-        skeleton_frame.pack(side=LEFT, fill=X, expand=1)
+        skeleton_frame.pack(side=BOTTOM, fill=X, expand=1)
 
         time_var = DoubleVar()
-        Label(data_frame, textvariable=time_var, width=10).pack(side=RIGHT)
+        Label(data_frame, textvariable=time_var, width=10).pack(side=TOP)
         data_frame.pack(side=LEFT, fill=BOTH, expand=1)
 
         def update_function(frame, frame_number, current_time, duration):
             if self.video_sync.with_skeleton.get():
                 try:
                     filename = f'{video_name}_{str(int(frame_number) + int(skeleton_var.get())).zfill(12)}_keypoints.json'
-                    visualize_frame(frame, join(self.data_handler.skeleton_folder, video_name, filename))
+                    person_id = video_name.split("_", 1)[0]
+                    visualize_frame(frame, join(self.skeleton_folder, person_id, video_name, filename))
                 except TclError as e:
                     print(f'Error: {e}')
 
@@ -106,7 +108,7 @@ class Display:
 
             recorded = self.data_handler.intersect(video_path, time)
             main_frame.config(highlightbackground=('green' if recorded else 'white'))
-            size = (480, 480)
+            size = (360, 360)
             frame = cv2.cvtColor(cv2.resize(frame, size), cv2.COLOR_RGB2BGR)
             frame_image = PIL.ImageTk.PhotoImage(image=PIL.Image.fromarray(frame))
             video_label.config(image=frame_image)
@@ -143,7 +145,8 @@ class Display:
                 start = self.root.nametowidget('labelingPanel.startFrame.startEntry').get()
                 end = self.root.nametowidget('labelingPanel.endFrame.endEntry').get()
                 movement = self.root.nametowidget('labelingPanel.movementFrame.movementCombobox').get()
-                self.data_handler.append(video, start, end, movement)
+                added = self.data_handler.append(video, start, end, movement)
+                messagebox.showinfo('Added', f'The following videos were added with start={start}, end={end}, movement={movement}:\n{added}')
             except ValueError as v:
                 messagebox.showerror('Error', v)
 

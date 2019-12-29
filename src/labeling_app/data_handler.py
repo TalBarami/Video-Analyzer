@@ -9,7 +9,6 @@ from pandastable import Table
 class DataHandler:
     def __init__(self):
         self.csv_path = 'resources/labels.csv'
-        self.skeleton_folder = 'C:/Users/Tal Barami/Desktop/jsons/a'
 
         self.df = None
         self.idx = 0
@@ -29,19 +28,27 @@ class DataHandler:
             raise ValueError(f'Fill the required information: {",".join(err)}')
         if start >= end:
             raise ValueError(f'Start time ({start}) is larger or equals to end time ({end}).')
+        if all(c == 'None' for (v, c) in videos):
+            raise ValueError(f'Select at least one child color.')
+
         for (v, c) in videos:
-            print(c, v)
+            print(v, c)
             if c and c != 'None':
                 self.df.loc[self.idx] = [v, c, float(start), float(end), movement]
                 self.idx += 1
+        added = [f'{v}: {c}' for v, c in videos if c != 'None']
+
+        return '\n'.join(added)
 
     def load(self):
         self.df = pd.read_csv(self.csv_path) if os.path.isfile(self.csv_path) else pd.DataFrame(
             columns=['video', 'color', 'start', 'end', 'movement'])
+        self.df.dropna(inplace=True)
         self.idx = self.df.shape[0]
 
     def save(self):
         print(os.getcwd())
+        self.df.dropna(inplace=True)
         self.df.to_csv(self.csv_path, index=False)
 
     def intersect(self, video, time):

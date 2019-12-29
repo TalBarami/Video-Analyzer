@@ -5,6 +5,7 @@ import cv2
 from subprocess import check_call
 from os import listdir
 from os.path import isfile, join
+from json.decoder import JSONDecodeError
 
 POSE_COCO_BODY_PARTS = {
     0: "Nose",
@@ -55,18 +56,23 @@ def visualize_frame(frame, json_path):
     with open(json_path, 'r') as json_file:
         skeletons = json.loads(json_file.read())
         for p in skeletons['people']:
-            pid = p['person_id']
+            pid = p['person_id'][0]
             p = p['pose_keypoints_2d']
             c = [(int(p[i]), int(p[i + 1])) for i in range(0, len(p), 3)]
             for v1, v2 in POSE_COCO_PAIRS:
-                if not (c[v1][0] + c[v1][0] == 0 or c[v2][0] + c[v2][0] == 0):
+                if not (c[v1][0] + c[v1][1] == 0 or c[v2][0] + c[v2][1] == 0):
                     color = (255 * (pid & 1 > 0), 255 * (pid & 2 > 0), 255 * (pid & 4 > 0))
                     cv2.line(frame, c[v1], c[v2], color, 3)
 
 
 def read_json(file):
-    with open(file, 'r') as j:
-        return json.loads(j.read())
+    try:
+        with open(file, 'r') as j:
+            return json.loads(j.read())
+    except (OSError, UnicodeDecodeError, JSONDecodeError) as e:
+        print(f'Error while reading json file: {file}')
+        print(e)
+        return
 
 
 def write_json(j, dst):
@@ -95,8 +101,12 @@ def find_closest(p, prevs):
     for pi in prevs:
         id_weights[pi['person_id']] += (1 / distance(p, pi))
 
-    selected_id = max(id_weights, key=id_weights.get)
-    selected_weight = id_weights[selected_id]
+    if len(id_weights) > 0:
+        selected_id = max(id_weights, key=id_weights.get)
+        selected_weight = id_weights[selected_id]
+    else:
+        selected_id = 0
+        selected_weight = 0
     return selected_id, selected_weight
 
 
@@ -123,22 +133,21 @@ def match_frames(ps, prevs):
         found[new_id] = (p, new_w)
 
 
-def set_person_id(json_src, json_dst, n=5, verbose=100):
-    file_names = [f for f in listdir(json_src) if isfile(join(json_src, f))]
+def set_person_id(json_src, n=5, verbose=10000):
+    file_names = [f for f in listdir(json_src) if isfile(join(json_src, f)) and f.endswith('json')]
 
     def src_path(i):
-        join(json_src, file_names[i])
+        return join(json_src, file_names[i])
 
     def dst_path(i):
-        join(json_dst, file_names[i])
+        return join(json_src, file_names[i])
 
     jsons = [read_json(src_path(0))]
     for idx, p in enumerate(jsons[0]['people']):
         p['person_id'] = idx
+    write_json(jsons[0], dst_path(0))
 
     for i in range(1, len(file_names)):
-        if (i - 1) % verbose == 0:
-            print(f'frame: {i}')
         jsons.append(read_json(src_path(i)))
         people = jsons[i]['people']
 
@@ -150,6 +159,17 @@ def set_person_id(json_src, json_dst, n=5, verbose=100):
 
         write_json(jsons[i], dst_path(i))
 
+        if i % verbose == 0:
+            print(f'frame: {i}')
+
+
+import os
 
 if __name__ == '__main__':
-    set_person_id('C:/Users/Tal Barami/Desktop/jsons/1', 'C:/Users/Tal Barami/Desktop/jsons/a/1')
+    l = []
+    for root, dirs, files in os.walk('D:/TalBarami/skeletons'):
+        if not dirs:
+            l.append(root)
+    for s in l:
+        print(f'handling person-id: {s}')
+        set_person_id(s)

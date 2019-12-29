@@ -19,7 +19,7 @@ class VideoPlayer:
         self.cap = cv2.VideoCapture(self.video_path)
         if not self.cap.isOpened():
             raise ValueError("Unable to open video source", self.video_path)
-        self.fps = self.cap.get(cv2.CAP_PROP_FPS)
+        self.fps = 60 # self.cap.get(cv2.CAP_PROP_FPS)
         self.frames_count = self.cap.get(cv2.CAP_PROP_FRAME_COUNT)
         self.duration = self.frames_count / self.fps
         print(f'Playing {self.video_path} on {self.fps} fps, total {self.frames_count} frames, duration {self.duration}')
@@ -54,6 +54,10 @@ class VideoPlayer:
                 self.update_function(frame, self.cap.get(cv2.CAP_PROP_POS_FRAMES), self.cap.get(cv2.CAP_PROP_POS_MSEC), self.duration)
             else:
                 sleep(0.001)
+
+    def next(self):
+        ret, frame = self.cap.read()
+        self.update_function(frame, self.cap.get(cv2.CAP_PROP_POS_FRAMES), self.cap.get(cv2.CAP_PROP_POS_MSEC), self.duration)
 
     def seek_frame(self, pos):
         self.lock.acquire()

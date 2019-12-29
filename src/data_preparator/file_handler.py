@@ -1,9 +1,9 @@
 import os
-import glob
-
-from os.path import join, splitext, isfile
-from shutil import copy2
+import shlex
 from distutils.dir_util import copy_tree
+from os.path import join
+from subprocess import check_call
+
 
 def encrypt(x):
     return x * 3 - 2015
@@ -11,30 +11,6 @@ def encrypt(x):
 
 def decrypt(y):
     (y + 2015) / 3
-
-
-# def search(directory, name):
-#     result = []
-#     for root, dirs, files in os.walk(directory):
-#         found = [join(root, f) for f in files if splitext(f) == name]
-#         result += found
-#     return result
-
-# def search(directory, name):
-#     for root, dirs, files in os.walk(directory):
-#         result = []
-#         found = [join(root, d) for d in dirs if d == name]
-#         if len(found) > 0:
-#             result += [glob.glob(f'{f}/**', recursive=True) for f in found]
-#         return result
-#
-#
-# def collect_files(ids):
-#     for cid in ids:
-#         matches = search('', cid)
-#         for file in matches:
-#             if isfile(file):
-#                 copy2(file, join('some_path', cid))  # TODO: Make sure we don't get the same file name twice.
 
 
 def find_and_copy(ids, src, dst):
@@ -49,9 +25,34 @@ def find_and_copy(ids, src, dst):
                     print(f'copy from {f} to {join(dst, cid)}')
                     copy_tree(f, join(dst, cid))
 
+
+def to_skeleton(src, dst):
+    print(f'src={src}, dst={dst}')
+    open_pose_path = 'D:/TalBarami/openpose/openpose-1.5.0-binaries-win64-gpu-python-flir-3d_recommended'
+    cwd = os.getcwd()
+    print(f'cwd: {cwd}')
+    os.chdir(open_pose_path)
+
+    cmd = f'bin/OpenPoseDemo.exe --video "{src}" --display 0 --write_json "{dst}" --write_video "{dst}/result.avi"'
+    print("About to run: {}".format(cmd))
+    check_call(shlex.split(cmd), universal_newlines=True)
+    os.chdir(cwd)
+
+
+def convert_videos(vids, skeletons):
+    for root, dirs, files in os.walk(vids):
+        for f in files:
+            src = join(root, f)
+            dst = join(skeletons, os.path.basename(os.path.normpath(root)), os.path.splitext(f)[0])
+            if not os.path.exists(dst):
+                os.makedirs(dst)
+            to_skeleton(src, dst)
+
+
 if __name__ == '__main__':
-    with open('D:/TalBarami/openpose/research/ids.txt') as f:
-        ids = f.read().splitlines()
-    src = 'E:/ADOS_Video_New_System'
-    dst = 'D:/TalBarami/vids'
-    find_and_copy(ids, src, dst)
+    # with open('D:/TalBarami/openpose/research/ids.txt') as f:
+    #     ids = f.read().splitlines()
+    # src = 'E:/ADOS_Video_New_System'
+    # dst = 'D:/TalBarami/vids'
+    # find_and_copy(ids, src, dst)
+    convert_videos('D:/TalBarami/vids', 'D:/TalBarami/skeletons')
