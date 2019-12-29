@@ -1,4 +1,5 @@
 import os
+from time import sleep
 from tkinter import *
 from tkinter import ttk, messagebox
 from tkinter.filedialog import askopenfilenames
@@ -7,6 +8,7 @@ import PIL.Image
 import PIL.ImageTk
 import cv2
 import numpy as np
+import threading
 
 from src.data_preparator.skeleton_visualizer import visualize_frame
 from src.labeling_app.data_handler import DataHandler
@@ -20,7 +22,7 @@ class Display:
     def __init__(self):
         self.video_paths = None
         self.videos = []
-        self.video_sync = VideoSync(self)
+        self.video_sync = VideoSync(lambda: self.videos, self.set_play_button_name)
         self.skeleton_folder = 'D:/TalBarami/skeletons'
 
         self.data_handler = DataHandler()
@@ -59,9 +61,11 @@ class Display:
         panel.pack(side=TOP, fill=BOTH, expand=1)
 
     def load_videos(self):
+        self.set_play_button_name('Play')
         self.video_sync.stop_thread = False
         self.video_sync.is_playing = False
         self.videos = [self.create_video_player(v, i) for i, v in enumerate(self.video_paths)]
+        self.video_sync.start()
 
     def create_video_player(self, video_path, idx):
         video_name = os.path.basename(video_path).split('.')[0]
@@ -84,6 +88,7 @@ class Display:
         color_frame.pack(side=TOP, fill=X, expand=1)
 
         skeleton_var = IntVar()
+        skeleton_var.set(-60)
         skeleton_frame = Frame(data_frame)
         Label(skeleton_frame, text='Skeleton adjust:').pack(side=LEFT, fill=X, expand=0)
         Entry(skeleton_frame, textvariable=skeleton_var).pack(side=RIGHT, fill=X, expand=1, padx=20)
@@ -104,7 +109,7 @@ class Display:
 
             time = np.round(current_time / 1000, 1)
             duration = np.round(duration, 1)
-            time_var.set(f'{time}/{duration}')
+            time_var.set(f'{time}/{duration}\n{frame_number}')
 
             recorded = self.data_handler.intersect(video_path, time)
             main_frame.config(highlightbackground=('green' if recorded else 'white'))
@@ -122,8 +127,8 @@ class Display:
                            color_function=lambda: color_combobox.get(),
                            destroy_function=destroy_function)
 
-    def set_play_button_name(self):
-        self.root.nametowidget('mediaPanel.playButton').config(text='Pause' if self.video_sync.is_playing else 'Play')
+    def set_play_button_name(self, value=None):
+        self.root.nametowidget('mediaPanel.playButton').config(text=value if value else 'Pause' if self.video_sync.is_playing else 'Play')
 
     def init_media_player(self):
         panel = PanedWindow(self.root, name='mediaPanel')
@@ -141,7 +146,7 @@ class Display:
     def init_labelling_entries(self):
         def add_button_click():
             try:
-                video = [(v.video_name, v.color()) for v in self.videos]
+                video = [(v, v.color()) for v in self.videos]
                 start = self.root.nametowidget('labelingPanel.startFrame.startEntry').get()
                 end = self.root.nametowidget('labelingPanel.endFrame.endEntry').get()
                 movement = self.root.nametowidget('labelingPanel.movementFrame.movementCombobox').get()
@@ -168,31 +173,35 @@ class Display:
 
         startFrame = Frame(panel, name='startFrame')
         Label(startFrame, name='startLabel', text='Start:').pack(side=LEFT, fill=X, padx=51)
-        Entry(startFrame, name='startEntry', validate='key', validatecommand=vcmd).pack(side=RIGHT, fill=X, padx=50, expand=1)
+        Entry(startFrame, name='startEntry', validate='key', validatecommand=vcmd).pack(side=LEFT, fill=X, ipadx=70, expand=0)
         startFrame.pack(fill=BOTH, expand=1)
         Frame(panel).pack(pady=5)
 
         endFrame = Frame(panel, name='endFrame')
         Label(endFrame, name='endLabel', text='End:').pack(side=LEFT, fill=X, padx=53)
-        Entry(endFrame, name='endEntry', validate='key', validatecommand=vcmd).pack(side=RIGHT, fill=X, padx=50, expand=1)
+        Entry(endFrame, name='endEntry', validate='key', validatecommand=vcmd).pack(side=LEFT, fill=X, ipadx=70, expand=0)
         endFrame.pack(fill=BOTH, expand=1)
         Frame(panel).pack(pady=5)
 
         movementFrame = Frame(panel, name='movementFrame')
         Label(movementFrame, name='movementLabel', text='Class:').pack(side=LEFT, fill=X, padx=50)
-        ttk.Combobox(movementFrame, name='movementCombobox', state='readonly', values=self.data_handler.movements).pack(side=RIGHT, fill=X, padx=50, expand=1)
+        ttk.Combobox(movementFrame, name='movementCombobox', state='readonly', values=self.data_handler.movements).pack(side=LEFT, fill=X, ipadx=60, expand=0)
         movementFrame.pack(fill=BOTH, expand=1)
         Frame(panel).pack(pady=5)
 
         buttonsFrame = Frame(panel, name='buttonsFrame')
-        Button(buttonsFrame, name='addButton', text='Add', state=DISABLED, command=add_button_click).pack(side=RIGHT, expand=1)
+        Button(buttonsFrame, name='addButton', text='Add', state=DISABLED, command=add_button_click).pack(side=LEFT, expand=1)
         Button(buttonsFrame, name='viewButton', text='View Data', command=lambda: self.data_handler.table_editor(self.root)).pack(side=LEFT, expand=1)
         self.video_sync.with_skeleton = BooleanVar()
         Checkbutton(buttonsFrame, name='skeletonButton', text='With Skeleton', variable=self.video_sync.with_skeleton).pack(side=LEFT, expand=1)
-        e = Entry(buttonsFrame, name='seekEntry')
+
+        seekFrame = Frame(buttonsFrame, name='seekFrame')
+        e = Entry(seekFrame, name='seekEntry')
         e.pack(side=LEFT, expand=1)
-        Button(buttonsFrame, name='seekButton', text='Jump',
-               command=lambda: [v.seek_time(e.get()) for v in self.videos]).pack(side=LEFT, expand=1)
+        Button(seekFrame, name='seekButton', text='Jump',
+               command=lambda: [v.seek_time(e.get()) for v in self.videos]).pack(side=LEFT, expand=0)
+        seekFrame.pack(fill=BOTH, expand=1)
+
         buttonsFrame.pack(fill=BOTH, expand=1)
         Frame(panel).pack(pady=10)
 
@@ -201,9 +210,15 @@ class Display:
     def on_closing(self):
         if messagebox.askokcancel("Quit", "Do you want to quit?"):
             self.data_handler.save()
+            self.video_sync.stop()
+            print(threading.enumerate())
             self.root.destroy()
 
 
 if __name__ == '__main__':
     d = Display()
     d.run()
+
+    running = threading.enumerate()
+    print(running)
+    exit(0)

@@ -19,14 +19,16 @@ class VideoPlayer:
         self.cap = cv2.VideoCapture(self.video_path)
         if not self.cap.isOpened():
             raise ValueError("Unable to open video source", self.video_path)
-        self.fps = 60 # self.cap.get(cv2.CAP_PROP_FPS)
+
+        self.fps = self.cap.get(cv2.CAP_PROP_FPS)
+
         self.frames_count = self.cap.get(cv2.CAP_PROP_FRAME_COUNT)
         self.duration = self.frames_count / self.fps
-        print(f'Playing {self.video_path} on {self.fps} fps, total {self.frames_count} frames, duration {self.duration}')
+        print(f'Playing {self.video_path} on {self.fps} fps (actual: {self.cap.get(cv2.CAP_PROP_FPS)} fps), total {self.frames_count} frames, duration {self.duration}')
 
-        self.stream_thread = threading.Thread(target=self.stream)
-        self.stream_thread.daemon = 1
-        self.stream_thread.start()
+        # self.stream_thread = threading.Thread(target=self.stream)
+        # self.stream_thread.daemon = 1
+        # self.stream_thread.start()
 
     def color(self):
         return self.color_function()
@@ -36,28 +38,41 @@ class VideoPlayer:
             self.cap.release()
         self.destroy_function()
 
-    def stream(self):
-        delay = 1000 / self.fps
-        while self.cap.isOpened():
-            while not self.video_sync.is_playing:
-                sleep(0.001)
-            if self.video_sync.stop_thread:
-                return
-            start = timer()
-            self.lock.acquire()
-            ret, frame = self.cap.read()
-            self.lock.release()
-            if ret:
-                while (timer() - start) * 1000 < delay:
-                    sleep(0.001)
-                    # cv2.waitKey(1)
-                self.update_function(frame, self.cap.get(cv2.CAP_PROP_POS_FRAMES), self.cap.get(cv2.CAP_PROP_POS_MSEC), self.duration)
-            else:
-                sleep(0.001)
+    # def stream(self):
+    #     delay = 1000 / self.fps
+    #     while self.cap.isOpened():
+    #         while not self.video_sync.is_playing:
+    #             sleep(0.001)
+    #         if self.video_sync.stop_thread:
+    #             return
+    #         start = timer()
+    #         self.lock.acquire()
+    #         ret, frame = self.cap.read()
+    #         self.lock.release()
+    #         if ret:
+    #             while (timer() - start) * 1000 < delay:
+    #                 sleep(0.001)
+    #                 # cv2.waitKey(1)
+    #             self.update_function(frame, self.cap.get(cv2.CAP_PROP_POS_FRAMES), self.cap.get(cv2.CAP_PROP_POS_MSEC), self.duration)
+    #         else:
+    #             sleep(0.001)
 
     def next(self):
-        ret, frame = self.cap.read()
-        self.update_function(frame, self.cap.get(cv2.CAP_PROP_POS_FRAMES), self.cap.get(cv2.CAP_PROP_POS_MSEC), self.duration)
+        if self.cap.isOpened():
+            self.lock.acquire()
+            ret, frame = self.cap.read()
+            while not ret:
+                ret, frame = self.cap.read()
+                pos = self.cap.get(cv2.CAP_PROP_POS_FRAMES)
+                if pos >= self.frames_count:
+                    self.lock.release()
+                    return
+            self.lock.release()
+            if ret:
+                self.update_function(frame, self.cap.get(cv2.CAP_PROP_POS_FRAMES), self.cap.get(cv2.CAP_PROP_POS_MSEC), self.duration)
+
+    def time_to_frame(self, time):
+        return time * self.fps
 
     def seek_frame(self, pos):
         self.lock.acquire()

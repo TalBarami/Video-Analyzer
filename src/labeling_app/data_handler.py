@@ -13,7 +13,7 @@ class DataHandler:
         self.df = None
         self.idx = 0
         self.movements = ['Hand flapping', 'Tapping', 'Fingers', 'Clapping', 'Body rocking', 'Other']
-        self.colors = ['None', 'Unidentified' 'Red', 'Green', 'Blue', 'Yellow', 'Teal', 'Purple']
+        self.colors = ['None', 'Unidentified', 'Red', 'Green', 'Blue', 'Yellow', 'Teal', 'Purple']
 
         self.load()
 
@@ -34,15 +34,15 @@ class DataHandler:
         for (v, c) in videos:
             print(v, c)
             if c and c != 'None':
-                self.df.loc[self.idx] = [v, c, float(start), float(end), movement]
+                self.df.loc[self.idx] = [v, c, float(start), float(end), v.time_to_frame(start), v.time_to_frame(end), movement]
                 self.idx += 1
-        added = [f'{v}: {c}' for v, c in videos if c != 'None']
+        added = [f'{v.video_name}: {c}' for v, c in videos if c != 'None']
 
         return '\n'.join(added)
 
     def load(self):
         self.df = pd.read_csv(self.csv_path) if os.path.isfile(self.csv_path) else pd.DataFrame(
-            columns=['video', 'color', 'start', 'end', 'movement'])
+            columns=['video', 'color', 'start_time', 'end_time', 'stat_frame', 'end_frame', 'movement'])
         self.df.dropna(inplace=True)
         self.idx = self.df.shape[0]
 
@@ -53,7 +53,7 @@ class DataHandler:
 
     def intersect(self, video, time):
         video_records = self.df[self.df['video'] == video]
-        return not video_records[(video_records.start <= time) & (video_records.end >= time)].empty
+        return not video_records[(video_records['start_time'] <= time) & (video_records['end_time'] >= time)].empty
 
     def table_editor(self, root):
         window = tk.Toplevel(root)
