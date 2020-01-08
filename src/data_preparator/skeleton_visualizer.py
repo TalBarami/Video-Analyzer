@@ -83,11 +83,11 @@ def write_json(j, dst):
 def distance(p1, p2):
     k1 = np.array([float(c) for c in p1['pose_keypoints_2d']])
     k2 = np.array([float(c) for c in p2['pose_keypoints_2d']])
-
+    epsilon = 1e-3
     xy1 = []
     xy2 = []
     for i in range(0, len(p1['pose_keypoints_2d']), 3):
-        if k1[i + 2] < 0.1 or k2[i + 1] < 0.1:
+        if k1[i + 2] < epsilon or k2[i + 1] < epsilon:
             continue
         xy1 += [k1[i], k1[i + 1]]
         xy2 += [k2[i], k2[i + 1]]

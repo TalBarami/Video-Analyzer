@@ -15,6 +15,12 @@ from src.labeling_app.data_handler import DataHandler
 from src.labeling_app.video_player import VideoPlayer
 from src.labeling_app.video_sync import VideoSync
 
+# TODO'S:
+# Jump 30 seconds backwards
+# Double speed button
+# Skeleton ids
+# Executable
+# Distance metric to center of mass?
 
 class Display:
     video_types = [('Video files', '*.avi;*.mp4')]
