@@ -2,6 +2,7 @@ import numpy as np
 import shlex
 import json
 import cv2
+import os
 from subprocess import check_call
 from os import listdir
 from os.path import isfile, join
@@ -56,12 +57,13 @@ def visualize_frame(frame, json_path):
     with open(json_path, 'r') as json_file:
         skeletons = json.loads(json_file.read())
         for p in skeletons['people']:
-            pid = p['person_id'][0]
+            pid = p['person_id'] + 1
             p = p['pose_keypoints_2d']
+
             c = [(int(p[i]), int(p[i + 1])) for i in range(0, len(p), 3)]
             for v1, v2 in POSE_COCO_PAIRS:
                 if not (c[v1][0] + c[v1][1] == 0 or c[v2][0] + c[v2][1] == 0):
-                    color = (255 * (pid & 1 > 0), 255 * (pid & 2 > 0), 255 * (pid & 4 > 0))
+                    color = (255 * (pid & 4 > 0), 255 * (pid & 2 > 0), 255 * (pid & 1 > 0))
                     cv2.line(frame, c[v1], c[v2], color, 3)
 
 
@@ -80,29 +82,53 @@ def write_json(j, dst):
         json.dump(j, f)
 
 
-def distance(p1, p2):
-    k1 = np.array([float(c) for c in p1['pose_keypoints_2d']])
-    k2 = np.array([float(c) for c in p2['pose_keypoints_2d']])
-    epsilon = 1e-3
-    xy1 = []
-    xy2 = []
-    for i in range(0, len(p1['pose_keypoints_2d']), 3):
-        if k1[i + 2] < epsilon or k2[i + 1] < epsilon:
-            continue
-        xy1 += [k1[i], k1[i + 1]]
-        xy2 += [k2[i], k2[i + 1]]
+# def distance(p1, p2):
+#     k1 = np.array([float(c) for c in p1['pose_keypoints_2d']])
+#     k2 = np.array([float(c) for c in p2['pose_keypoints_2d']])
+#     epsilon = 1e-3
+#     xy1 = []
+#     xy2 = []
+#     for i in range(0, len(p1['pose_keypoints_2d']), 3):
+#         if k1[i + 2] < epsilon or k2[i + 1] < epsilon:
+#             continue
+#         xy1 += [k1[i], k1[i + 1]]
+#         xy2 += [k2[i], k2[i + 1]]
+#
+#     return np.sum(np.power(np.array(xy1) - np.array(xy2), 2))
 
-    return np.sum(np.power(np.array(xy1) - np.array(xy2), 2))
+def distance(p1, p2):
+    x1, y1 = center_of_mass(p1)
+    x2, y2 = center_of_mass(p2)
+
+    if not any([x for x in [x1, x2, y1, y2] if x is np.NaN]):
+        return np.sqrt(np.power(x1 - x2, 2) + np.power(y1 - y2, 2))
+    else:
+        return np.inf
+
+
+def center_of_mass(p):
+    k = np.array([float(c) for c in p['pose_keypoints_2d']])
+    coords = [c for c in zip(k[::3], k[1::3], k[2::3])]
+    threshold = 0.1
+
+    x = np.array([c[0] for c in coords if c[2] > threshold]).mean()
+    y = np.array([c[1] for c in coords if c[2] > threshold]).mean()
+
+    return x, y
 
 
 def find_closest(p, prevs):
     ids = set([pi['person_id'] for pi in prevs])
-    id_weights = dict([(i, 0) for i in ids])
+    id_weights = dict([(i, []) for i in ids])
     for pi in prevs:
-        id_weights[pi['person_id']] += (1 / distance(p, pi))
+        d = distance(p, pi)
+        id_weights[pi['person_id']].append(d)
+
+    for i in ids:
+        id_weights[i] = np.mean(id_weights[i])
 
     if len(id_weights) > 0:
-        selected_id = max(id_weights, key=id_weights.get)
+        selected_id = min(id_weights, key=id_weights.get)
         selected_weight = id_weights[selected_id]
     else:
         selected_id = 0
@@ -120,17 +146,18 @@ def match_frames(ps, prevs):
 
     found = {}
     for p in ps:
-        new_id, new_w = find_closest(p, prevs)
+        new_id, d_new = find_closest(p, prevs)
         if new_id in found:
-            p_old, w_old = found[new_id]
-            generated_id = gen_id(ps + prevs)
-            if w_old > new_w:
-                p['person_id'] = generated_id
-                continue
+            p_old, d_old = found[new_id]
+            generated_id = gen_id(prevs + [v[0] for v in found.values()])
+            if d_old < d_new:
+                new_id = generated_id
             else:
                 p_old['person_id'] = generated_id
+                found[generated_id] = (p_old, d_old)
+                p['person_id'] = new_id
         p['person_id'] = new_id
-        found[new_id] = (p, new_w)
+        found[new_id] = (p, d_new)
 
 
 def set_person_id(json_src, n=5, verbose=10000):
@@ -155,6 +182,7 @@ def set_person_id(json_src, n=5, verbose=10000):
         for j in range(min(n, i)):
             for p in jsons[j]['people']:
                 prevs.append(p)
+
         match_frames(people, prevs)
 
         write_json(jsons[i], dst_path(i))
@@ -162,8 +190,6 @@ def set_person_id(json_src, n=5, verbose=10000):
         if i % verbose == 0:
             print(f'frame: {i}')
 
-
-import os
 
 if __name__ == '__main__':
     l = []

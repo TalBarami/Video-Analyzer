@@ -61,12 +61,13 @@ class VideoPlayer:
         if self.cap.isOpened():
             self.lock.acquire()
             ret, frame = self.cap.read()
+            ticks = 0
             while not ret:
                 ret, frame = self.cap.read()
                 pos = self.cap.get(cv2.CAP_PROP_POS_FRAMES)
-                if pos >= self.frames_count:
-                    self.lock.release()
-                    return
+                ticks += 1
+                if ticks > 100 or pos >= self.frames_count:
+                    break
             self.lock.release()
             if ret:
                 self.update_function(frame, self.cap.get(cv2.CAP_PROP_POS_FRAMES), self.cap.get(cv2.CAP_PROP_POS_MSEC), self.duration)

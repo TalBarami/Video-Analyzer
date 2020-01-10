@@ -1,19 +1,22 @@
 import os
+import threading
+from os.path import join
 from time import sleep
 from tkinter import *
 from tkinter import ttk, messagebox
 from tkinter.filedialog import askopenfilenames
-from os.path import join
+from concurrent.futures import ThreadPoolExecutor
+
 import PIL.Image
 import PIL.ImageTk
 import cv2
 import numpy as np
-import threading
 
 from src.data_preparator.skeleton_visualizer import visualize_frame
 from src.labeling_app.data_handler import DataHandler
 from src.labeling_app.video_player import VideoPlayer
 from src.labeling_app.video_sync import VideoSync
+
 
 # TODO'S:
 # Jump 30 seconds backwards
@@ -61,6 +64,7 @@ class Display:
             self.root.nametowidget('labelingPanel.buttonsFrame.addButton').config(state=NORMAL if b else DISABLED)
             if b:
                 self.load_videos()
+
         Listbox(panel, name='videosListbox', width=80, height=10).pack(fill=BOTH, expand=1)
 
         Button(panel, name='browseButton', text="Browse", command=lambda: browse_button_click()).pack(expand=1)
@@ -105,9 +109,17 @@ class Display:
         data_frame.pack(side=LEFT, fill=BOTH, expand=1)
 
         def update_function(frame, frame_number, current_time, duration):
+            if self.video_sync.stop_thread:
+                return
             if self.video_sync.with_skeleton.get():
                 try:
-                    filename = f'{video_name}_{str(int(frame_number) + int(skeleton_var.get())).zfill(12)}_keypoints.json'
+                    adjust = skeleton_var.get()
+                    try:
+                        adjust = int(adjust)
+                    except ValueError:
+                        adjust = 0
+
+                    filename = f'{video_name}_{str(int(frame_number) + adjust)).zfill(12)}_keypoints.json'
                     person_id = video_name.split("_", 1)[0]
                     visualize_frame(frame, join(self.skeleton_folder, person_id, video_name, filename))
                 except TclError as e:
@@ -144,7 +156,7 @@ class Display:
             self.video_sync.is_playing = not self.video_sync.is_playing
             self.set_play_button_name()
 
-        Button(panel, name='playButton', text='Play', state=DISABLED, command=play_button_click)\
+        Button(panel, name='playButton', text='Play', state=DISABLED, command=play_button_click) \
             .pack(side=BOTTOM, expand=1, pady=10)
 
         panel.pack(side=TOP, fill=BOTH, expand=1, pady=10)
@@ -218,7 +230,16 @@ class Display:
             self.data_handler.save()
             self.video_sync.stop()
             print(threading.enumerate())
-            self.root.destroy()
+
+            def destroy_function():
+                sleep(1)
+                self.root.destroy()
+
+            t = threading.Thread(target=destroy_function)
+            t.daemon = 1
+            t.start()
+            # sleep(1)
+            # self.root.destroy()
 
 
 if __name__ == '__main__':
@@ -227,4 +248,5 @@ if __name__ == '__main__':
 
     running = threading.enumerate()
     print(running)
-    exit(0)
+    print('Exiting')
+    sys.exit(0)

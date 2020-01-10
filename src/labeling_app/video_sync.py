@@ -1,9 +1,9 @@
 import threading
+from concurrent.futures import ThreadPoolExecutor
 from threading import Lock
 from time import sleep
 from time import time as timer
-from concurrent.futures import ThreadPoolExecutor
-from multiprocessing import Process
+
 
 class VideoSync:
     def __init__(self, videos, on_reset):
@@ -45,18 +45,18 @@ class VideoSync:
             start = timer()
             while not self.is_playing:
                 sleep(0.01)
-            if self.stop_thread:
-                return
-            while timer() - start < delay:
+
+            while (timer() - start) < delay:
                 sleep(0.0001)
-            self.run_io_tasks_in_parallel([v.next for v in vids])
+
+            if not self.stop_thread:
+                self.running_tasks = [self.executor.submit(task) for task in [v.next for v in vids]]
+                for t in self.running_tasks:
+                    t.result()
 
     def run_io_tasks_in_parallel(self, tasks):
-        if not self.stop_thread:
-            self.running_tasks = [self.executor.submit(task) for task in tasks]
+        return [self.executor.submit(task) for task in tasks]
 
-            for t in self.running_tasks:
-                t.result()
 
     def reset(self):
         self.lock.acquire()
