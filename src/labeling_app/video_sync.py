@@ -13,6 +13,7 @@ class VideoSync:
         self.is_playing = False
         self.stop_thread = False
         self.with_skeleton = None
+        self.play_speed = 1
         self.stream_thread = None
         self.executor = None
         self.running_tasks = []
@@ -54,10 +55,6 @@ class VideoSync:
                 for t in self.running_tasks:
                     t.result()
 
-    def run_io_tasks_in_parallel(self, tasks):
-        return [self.executor.submit(task) for task in tasks]
-
-
     def reset(self):
         self.lock.acquire()
         try:
@@ -66,3 +63,6 @@ class VideoSync:
             self.on_reset()
         finally:
             self.lock.release()
+
+    def set_speed(self, speed):
+        self.play_speed = speed

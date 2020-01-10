@@ -19,11 +19,11 @@ from src.labeling_app.video_sync import VideoSync
 
 
 # TODO'S:
-# Jump 30 seconds backwards
-# Double speed button
-# Skeleton ids
+# Jump 30 seconds backwards *DONE*
+# Double speed button *DONE*
+# Skeleton ids *DONE*
 # Executable
-# Distance metric to center of mass?
+# Distance metric to center of mass? *DONE*
 
 class Display:
     video_types = [('Video files', '*.avi;*.mp4')]
@@ -61,7 +61,7 @@ class Display:
                 listbox.insert(END, item)
             b = len(self.video_paths) > 0
             self.root.nametowidget('mediaPanel.playButton').config(state=NORMAL if b else DISABLED)
-            self.root.nametowidget('labelingPanel.buttonsFrame.addButton').config(state=NORMAL if b else DISABLED)
+            self.root.nametowidget('labelingPanel.manageFrame.buttonsFrame.addButton').config(state=NORMAL if b else DISABLED)
             if b:
                 self.load_videos()
 
@@ -119,8 +119,8 @@ class Display:
                     except ValueError:
                         adjust = 0
 
-                    filename = f'{video_name}_{str(int(frame_number) + adjust)).zfill(12)}_keypoints.json'
-                    person_id = video_name.split("_", 1)[0]
+                    filename = f'{video_name}_{str(int(frame_number) + adjust).zfill(12)}_keypoints.json'
+                    person_id = video_name.split('_', 1)[0]
                     visualize_frame(frame, join(self.skeleton_folder, person_id, video_name, filename))
                 except TclError as e:
                     print(f'Error: {e}')
@@ -162,17 +162,13 @@ class Display:
         panel.pack(side=TOP, fill=BOTH, expand=1, pady=10)
 
     def init_labelling_entries(self):
-        def add_button_click():
-            try:
-                video = [(v, v.color()) for v in self.videos]
-                start = self.root.nametowidget('labelingPanel.startFrame.startEntry').get()
-                end = self.root.nametowidget('labelingPanel.endFrame.endEntry').get()
-                movement = self.root.nametowidget('labelingPanel.movementFrame.movementCombobox').get()
-                added = self.data_handler.append(video, start, end, movement)
-                messagebox.showinfo('Added', f'The following videos were added with start={start}, end={end}, movement={movement}:\n{added}')
-            except ValueError as v:
-                messagebox.showerror('Error', v)
+        panel = PanedWindow(self.root, name='labelingPanel')
+        self.init_data_input_frame(panel)
+        self.init_management_frame(panel)
 
+        panel.pack(side=TOP, fill=X, expand=1)
+
+    def init_data_input_frame(self, panel):
         def validate(action, index, value,
                      prior_value, text, validation_type, trigger_type, widget_name):
             print(
@@ -187,11 +183,10 @@ class Display:
         vcmd = (self.root.register(validate),
                 '%d', '%i', '%P', '%s', '%S', '%v', '%V', '%W')
 
-        panel = PanedWindow(self.root, name='labelingPanel')
-
         startFrame = Frame(panel, name='startFrame')
         Label(startFrame, name='startLabel', text='Start:').pack(side=LEFT, fill=X, padx=51)
-        Entry(startFrame, name='startEntry', validate='key', validatecommand=vcmd).pack(side=LEFT, fill=X, ipadx=70, expand=0)
+        Entry(startFrame, name='startEntry', validate='key', validatecommand=vcmd).pack(side=LEFT, fill=X, ipadx=70,
+                                                                                        expand=0)
         startFrame.pack(fill=BOTH, expand=1)
         Frame(panel).pack(pady=5)
 
@@ -203,27 +198,70 @@ class Display:
 
         movementFrame = Frame(panel, name='movementFrame')
         Label(movementFrame, name='movementLabel', text='Class:').pack(side=LEFT, fill=X, padx=50)
-        ttk.Combobox(movementFrame, name='movementCombobox', state='readonly', values=self.data_handler.movements).pack(side=LEFT, fill=X, ipadx=60, expand=0)
+        ttk.Combobox(movementFrame, name='movementCombobox', state='readonly', values=self.data_handler.movements).pack(
+            side=LEFT, fill=X, ipadx=60, expand=0)
         movementFrame.pack(fill=BOTH, expand=1)
         Frame(panel).pack(pady=5)
 
-        buttonsFrame = Frame(panel, name='buttonsFrame')
-        Button(buttonsFrame, name='addButton', text='Add', state=DISABLED, command=add_button_click).pack(side=LEFT, expand=1)
-        Button(buttonsFrame, name='viewButton', text='View Data', command=lambda: self.data_handler.table_editor(self.root)).pack(side=LEFT, expand=1)
-        self.video_sync.with_skeleton = BooleanVar()
-        Checkbutton(buttonsFrame, name='skeletonButton', text='With Skeleton', variable=self.video_sync.with_skeleton).pack(side=LEFT, expand=1)
+    def init_management_frame(self, panel):
+        manageFrame = Frame(panel, name='manageFrame')
 
-        seekFrame = Frame(buttonsFrame, name='seekFrame')
-        e = Entry(seekFrame, name='seekEntry')
-        e.pack(side=LEFT, expand=1)
-        Button(seekFrame, name='seekButton', text='Jump',
-               command=lambda: [v.seek_time(e.get()) for v in self.videos]).pack(side=LEFT, expand=0)
-        seekFrame.pack(fill=BOTH, expand=1)
-
-        buttonsFrame.pack(fill=BOTH, expand=1)
+        self.init_buttons_manager(manageFrame)
+        Frame(manageFrame).pack(padx=15)
+        self.init_video_manager(manageFrame)
+        Frame(manageFrame).pack(padx=15)
         Frame(panel).pack(pady=10)
+        manageFrame.pack(fill=BOTH, expand=1)
 
-        panel.pack(side=TOP, fill=X, expand=1)
+    def init_buttons_manager(self, manageFrame):
+        def add_button_click():
+            try:
+                video = [(v, v.color()) for v in self.videos]
+                start = self.root.nametowidget('labelingPanel.startFrame.startEntry').get()
+                end = self.root.nametowidget('labelingPanel.endFrame.endEntry').get()
+                movement = self.root.nametowidget('labelingPanel.movementFrame.movementCombobox').get()
+                added = self.data_handler.append(video, start, end, movement)
+                messagebox.showinfo('Added', f'The following videos were added with start={start}, end={end}, movement={movement}:\n{added}')
+            except ValueError as v:
+                messagebox.showerror('Error', v)
+
+        buttonsFrame = Frame(manageFrame, name='buttonsFrame')
+        self.video_sync.with_skeleton = BooleanVar()
+        self.video_sync.with_skeleton.set(True)
+        Checkbutton(buttonsFrame, name='skeletonButton', text='With Skeleton',
+                    variable=self.video_sync.with_skeleton).pack(side=TOP, expand=1)
+        Frame(buttonsFrame).pack(pady=5)
+        Button(buttonsFrame, name='addButton', text='Add Record', state=DISABLED, command=add_button_click).pack(side=TOP, expand=1)
+        Frame(buttonsFrame).pack(pady=5)
+        Button(buttonsFrame, name='viewButton', text='View Data',
+               command=lambda: self.data_handler.table_editor(self.root)).pack(side=TOP, expand=1)
+
+        buttonsFrame.pack(side=LEFT, fill=BOTH, expand=1)
+
+    def init_video_manager(self, manageFrame):
+        videoFrame = Frame(manageFrame, name='videoFrame')
+
+        seekFrame = Frame(videoFrame, name='seekFrame')
+        Label(seekFrame, text='Position settings').pack(side=TOP, fill=BOTH, expand=1)
+        e = Entry(seekFrame, name='seekEntry')
+        e.pack(side=TOP, fill=X, ipadx=70, expand=0)
+        seekButtonsFrame = Frame(seekFrame, name='seekButtonsFrame')
+        Button(seekButtonsFrame, name='setButton', text='Set Time', command=lambda: [v.seek_time(e.get()) for v in self.videos]).pack(side=LEFT, expand=1)
+        Button(seekButtonsFrame, name='addButton', text='Add Time', command=lambda: [v.add_time(e.get()) for v in self.videos]).pack(side=RIGHT, expand=1)
+        seekButtonsFrame.pack(side=BOTTOM, fill=BOTH, expand=1)
+        seekFrame.pack(side=LEFT, fill=X, expand=1, padx=10)
+        Frame(videoFrame).pack(padx=10)
+
+        speedFrame = Frame(videoFrame, name='speedFrame')
+        Label(speedFrame, text='Video speed').pack(side=TOP, fill=BOTH, expand=1)
+        speedVar = StringVar()
+        speedCombobox = ttk.Combobox(speedFrame, name=f'speedCombobox', textvariable=speedVar, state='readonly', values=['x1', 'x2', 'x4'])
+        speedCombobox.current(0)
+        speedCombobox.bind("<<ComboboxSelected>>", lambda e: self.video_sync.set_speed(int(speedVar.get()[1])))
+        speedCombobox.pack(side=TOP, fill=X, ipadx=70, expand=0)
+        speedFrame.pack(side=LEFT, fill=X, expand=1, padx=10)
+
+        videoFrame.pack(side=LEFT, fill=BOTH, expand=1)
 
     def on_closing(self):
         if messagebox.askokcancel("Quit", "Do you want to quit?"):
@@ -238,8 +276,6 @@ class Display:
             t = threading.Thread(target=destroy_function)
             t.daemon = 1
             t.start()
-            # sleep(1)
-            # self.root.destroy()
 
 
 if __name__ == '__main__':
