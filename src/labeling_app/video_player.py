@@ -24,7 +24,8 @@ class VideoPlayer:
 
         self.frames_count = self.cap.get(cv2.CAP_PROP_FRAME_COUNT)
         self.duration = self.frames_count / self.fps
-        print(f'Playing {self.video_path} on {self.fps} fps (actual: {self.cap.get(cv2.CAP_PROP_FPS)} fps), total {self.frames_count} frames, duration {self.duration}')
+        print(
+            f'Playing {self.video_path} on {self.fps} fps (actual: {self.cap.get(cv2.CAP_PROP_FPS)} fps), total {self.frames_count} frames, duration {self.duration}')
 
         # self.stream_thread = threading.Thread(target=self.stream)
         # self.stream_thread.daemon = 1
@@ -62,7 +63,8 @@ class VideoPlayer:
         for i in range(self.video_sync.play_speed):
             ret, frame = self.read_frame()
         if ret:
-            self.update_function(frame, self.cap.get(cv2.CAP_PROP_POS_FRAMES), self.cap.get(cv2.CAP_PROP_POS_MSEC), self.duration)
+            self.update_function(frame, self.cap.get(cv2.CAP_PROP_POS_FRAMES), self.cap.get(cv2.CAP_PROP_POS_MSEC),
+                                 self.duration)
 
     def read_frame(self):
         if self.cap.isOpened():
@@ -79,9 +81,8 @@ class VideoPlayer:
             return ret, frame
         return False, 0
 
-
     def time_to_frame(self, time):
-        return time * self.fps
+        return int(time * self.fps)
 
     def seek_frame(self, pos):
         self.lock.acquire()
@@ -107,4 +108,3 @@ class VideoPlayer:
         except ValueError as v:
             print(f'Error: {v}')
         self.lock.release()
-
