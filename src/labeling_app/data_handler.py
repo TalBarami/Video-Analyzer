@@ -26,6 +26,8 @@ class DataHandler:
 
         if len(err) > 0:
             raise ValueError(f'Fill the required information: {",".join(err)}')
+        start = float(start)
+        end = float(end)
         if start >= end:
             raise ValueError(f'Start time ({start}) is larger or equals to end time ({end}).')
         if all(c == 'None' for (v, c) in videos):
@@ -34,7 +36,7 @@ class DataHandler:
         for (v, c) in videos:
             print(v, c)
             if c and c != 'None':
-                self.df.loc[self.idx] = [v, c, float(start), float(end), v.time_to_frame(start), v.time_to_frame(end), movement]
+                self.df.loc[self.idx] = [v.video_name, c, float(start), float(end), v.time_to_frame(start), v.time_to_frame(end), movement]
                 self.idx += 1
         added = [f'{v.video_name}: {c}' for v, c in videos if c != 'None']
 

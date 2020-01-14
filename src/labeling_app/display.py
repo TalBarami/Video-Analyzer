@@ -129,8 +129,9 @@ class Display:
             duration = np.round(duration, 1)
             time_var.set(f'{time}/{duration}\n{frame_number}')
 
-            recorded = self.data_handler.intersect(video_path, time)
-            main_frame.config(highlightbackground=('green' if recorded else 'white'))
+            recorded = self.data_handler.intersect(video_name, time)
+
+            main_frame.config(highlightbackground=('red' if recorded else 'white'), highlightthickness=5)
             size = (360, 360)
             frame = cv2.cvtColor(cv2.resize(frame, size), cv2.COLOR_RGB2BGR)
             frame_image = PIL.ImageTk.PhotoImage(image=PIL.Image.fromarray(frame))

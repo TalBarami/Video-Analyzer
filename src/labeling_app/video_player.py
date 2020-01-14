@@ -57,7 +57,7 @@ class VideoPlayer:
         return False, 0
 
     def time_to_frame(self, time):
-        return time * self.fps
+        return int(time * self.fps)
 
     def seek_frame(self, pos):
         self.lock.acquire()
