@@ -43,6 +43,8 @@ POSE_COCO_PAIRS = [(0, 1), (1, 8),
                    (8, 12), (12, 13), (13, 14), (14, 21), (14, 19), (19, 20),
                    (0, 15), (15, 17), (0, 16), (16, 18)]
 
+COLORS_ARRAY = [(0, 0, 255), (0, 255, 0), (255, 0, 0), (0, 255, 255), (255, 0, 255), (255, 255, 0), (128, 128, 128), (42, 42, 165)]
+
 
 def make_skeleton(open_pose, vid_path, skeleton_dst):
     cmd = f'"{open_pose}" --video "{vid_path}" --write_json "{skeleton_dst}" --display 0 --render_pose 0'
@@ -52,18 +54,17 @@ def make_skeleton(open_pose, vid_path, skeleton_dst):
 
 def visualize_frame(frame, json_path):
     if not isfile(json_path):
-        print(f'Error: no such file {json_path}')
         return
     with open(json_path, 'r') as json_file:
         skeletons = json.loads(json_file.read())
         for p in skeletons['people']:
-            pid = p['person_id'] + 1
+            pid = p['person_id']
             p = p['pose_keypoints_2d']
 
             c = [(int(p[i]), int(p[i + 1])) for i in range(0, len(p), 3)]
             for v1, v2 in POSE_COCO_PAIRS:
                 if not (c[v1][0] + c[v1][1] == 0 or c[v2][0] + c[v2][1] == 0):
-                    color = (255 * (pid & 4 > 0), 255 * (pid & 2 > 0), 255 * (pid & 1 > 0))
+                    color = COLORS_ARRAY[pid] if pid < len(COLORS_ARRAY) else (255, 255, 255)
                     cv2.line(frame, c[v1], c[v2], color, 3)
 
 

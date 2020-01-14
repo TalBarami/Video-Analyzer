@@ -92,7 +92,7 @@ class Display:
         color_frame = Frame(data_frame)
         Label(color_frame, text='Child Color:').pack(side=LEFT, fill=X, expand=0)
         color_combobox = ttk.Combobox(color_frame, name=f'color_{idx}', state='readonly', width=27,
-                                      values=self.data_handler.colors)
+                                      values=self.data_handler.color_items)
         color_combobox.current(0)
         color_combobox.pack(side=RIGHT, fill=X, expand=1, padx=20)
         color_frame.pack(side=TOP, fill=X, expand=1)
