@@ -26,10 +26,6 @@ class VideoPlayer:
         self.duration = self.frames_count / self.fps
         print(f'Playing {self.video_path} on {self.fps} fps (actual: {self.cap.get(cv2.CAP_PROP_FPS)} fps), total {self.frames_count} frames, duration {self.duration}')
 
-        # self.stream_thread = threading.Thread(target=self.stream)
-        # self.stream_thread.daemon = 1
-        # self.stream_thread.start()
-
     def color(self):
         return self.color_function()
 
@@ -37,25 +33,6 @@ class VideoPlayer:
         if self.cap and self.cap.isOpened():
             self.cap.release()
         self.destroy_function()
-
-    # def stream(self):
-    #     delay = 1000 / self.fps
-    #     while self.cap.isOpened():
-    #         while not self.video_sync.is_playing:
-    #             sleep(0.001)
-    #         if self.video_sync.stop_thread:
-    #             return
-    #         start = timer()
-    #         self.lock.acquire()
-    #         ret, frame = self.cap.read()
-    #         self.lock.release()
-    #         if ret:
-    #             while (timer() - start) * 1000 < delay:
-    #                 sleep(0.001)
-    #                 # cv2.waitKey(1)
-    #             self.update_function(frame, self.cap.get(cv2.CAP_PROP_POS_FRAMES), self.cap.get(cv2.CAP_PROP_POS_MSEC), self.duration)
-    #         else:
-    #             sleep(0.001)
 
     def next(self):
         ret, frame = False, 0
@@ -79,32 +56,27 @@ class VideoPlayer:
             return ret, frame
         return False, 0
 
-
     def time_to_frame(self, time):
         return time * self.fps
 
     def seek_frame(self, pos):
         self.lock.acquire()
-        self.cap.set(cv2.CAP_PROP_POS_FRAMES, float(pos))
+        try:
+            pos = float(pos)
+            self.cap.set(cv2.CAP_PROP_POS_FRAMES, float(pos))
+        except ValueError as v:
+            print(f'Error: {v}')
         self.lock.release()
 
-    def seek_time(self, time):
+    def seek_time(self, time, delta=0):
         self.lock.acquire()
         try:
             time = float(time)
-            self.cap.set(cv2.CAP_PROP_POS_MSEC, time * 1000)
+            self.cap.set(cv2.CAP_PROP_POS_MSEC, delta + time * 1000)
             print(f'video {self.video_name} is jumping to time: {time}, frame {self.cap.get(cv2.CAP_PROP_POS_FRAMES)}')
         except ValueError as v:
             print(f'Error: {v}')
         self.lock.release()
 
     def add_time(self, time):
-        self.lock.acquire()
-        try:
-            time = float(time)
-            self.cap.set(cv2.CAP_PROP_POS_MSEC, self.cap.get(cv2.CAP_PROP_POS_MSEC) + time * 1000)
-            print(f'video {self.video_name} is jumping to time: {time}, frame {self.cap.get(cv2.CAP_PROP_POS_FRAMES)}')
-        except ValueError as v:
-            print(f'Error: {v}')
-        self.lock.release()
-
+        self.seek_time(time, delta=self.cap.get(cv2.CAP_PROP_POS_MSEC))
