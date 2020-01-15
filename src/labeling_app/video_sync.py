@@ -13,6 +13,7 @@ class VideoSync:
         self.is_playing = False
         self.stop_thread = False
         self.with_skeleton = None
+        self.with_image = None
         self.play_speed = 1
         self.stream_thread = None
         self.executor = None

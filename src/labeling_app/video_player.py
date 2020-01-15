@@ -1,7 +1,5 @@
 import os
 import threading
-from time import sleep
-from time import time as timer
 
 import cv2
 

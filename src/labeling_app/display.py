@@ -5,7 +5,6 @@ from time import sleep
 from tkinter import *
 from tkinter import ttk, messagebox
 from tkinter.filedialog import askopenfilenames
-from concurrent.futures import ThreadPoolExecutor
 
 import PIL.Image
 import PIL.ImageTk
@@ -17,13 +16,6 @@ from src.labeling_app.data_handler import DataHandler
 from src.labeling_app.video_player import VideoPlayer
 from src.labeling_app.video_sync import VideoSync
 
-
-# TODO'S:
-# Jump 30 seconds backwards *DONE*
-# Double speed button *DONE*
-# Skeleton ids *DONE*
-# Executable
-# Distance metric to center of mass? *DONE*
 
 class Display:
     video_types = [('Video files', '*.avi;*.mp4')]
@@ -111,6 +103,8 @@ class Display:
         def update_function(frame, frame_number, current_time, duration):
             if self.video_sync.stop_thread:
                 return
+            if not self.video_sync.with_image.get():
+                frame *= 0
             if self.video_sync.with_skeleton.get():
                 try:
                     adjust = skeleton_var.get()
@@ -227,10 +221,15 @@ class Display:
                 messagebox.showerror('Error', v)
 
         buttonsFrame = Frame(manageFrame, name='buttonsFrame')
+
+        checkboxFrame = Frame(buttonsFrame)
         self.video_sync.with_skeleton = BooleanVar()
         self.video_sync.with_skeleton.set(True)
-        Checkbutton(buttonsFrame, name='skeletonButton', text='With Skeleton',
-                    variable=self.video_sync.with_skeleton).pack(side=TOP, expand=1)
+        Checkbutton(checkboxFrame, text='Display Skeleton', variable=self.video_sync.with_skeleton).pack(side=LEFT, expand=1)
+        self.video_sync.with_image = BooleanVar()
+        self.video_sync.with_image.set(True)
+        Checkbutton(checkboxFrame, text='Display Image', variable=self.video_sync.with_image).pack(side=LEFT, expand=1)
+        checkboxFrame.pack(side=TOP, expand=1)
         Frame(buttonsFrame).pack(pady=5)
         Button(buttonsFrame, name='addButton', text='Add Record', state=DISABLED, command=add_button_click).pack(side=TOP, expand=1)
         Frame(buttonsFrame).pack(pady=5)
