@@ -5,7 +5,7 @@ import cv2
 import os
 from subprocess import check_call
 from os import listdir
-from os.path import isfile, join, basename
+from os.path import isfile, join, basename, splitext
 from json.decoder import JSONDecodeError
 
 POSE_COCO_BODY_PARTS = {
@@ -46,10 +46,15 @@ POSE_COCO_PAIRS = [(0, 1), (1, 8),
 COLORS_ARRAY = [(0, 0, 255), (0, 255, 0), (255, 0, 0), (0, 255, 255), (255, 0, 255), (255, 255, 0), (128, 128, 128), (42, 42, 165)]
 
 
-def make_skeleton(open_pose, vid_path, skeleton_dst):
-    cmd = f'"{open_pose}" --video "{vid_path}" --write_json "{skeleton_dst}" --display 0 --render_pose 0'
+def make_skeleton(open_pose_path, vid_path, skeleton_dst):
+    cwd = os.getcwd()
+    os.chdir(open_pose_path)
+
+    cmd = f'bin/OpenPoseDemo.exe --video "{vid_path}" --model_pose COCO --write_json "{skeleton_dst}" --display 0 --render_pose 0'
     print("About to run: {}".format(cmd))
     check_call(shlex.split(cmd), universal_newlines=True)
+
+    os.chdir(cwd)
 
 
 def visualize_frame(frame, json_path):
@@ -192,47 +197,71 @@ def set_person_id(json_src, n=5, verbose=10000):
             print(f'frame: {i}')
 
 
-def pre_preocss(video_path, dst_path):
-    cap = cv2.VideoCapture(video_path)
+def pre_process(video, dst, resolution=(340, 526)):
+    cap = cv2.VideoCapture(video)
     cap.set(cv2.CAP_PROP_FPS, 30.0)
-    fourcc = cv2.VideoWriter_fourcc(*'XVID')
-    out = cv2.VideoWriter(join(dst_path, basename(video_path)), fourcc, 30.0, (340, 526))
+    # fourcc = cv2.VideoWriter_fourcc(*'XVID') # For AVI?
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+    # fourcc = 0x00000021 # For MP4?
+    out = cv2.VideoWriter(dst, fourcc, 30.0, (340, 526))
     while cap.isOpened():
         ret, frame = cap.read()
         if ret:
-            frame = cv2.resize(frame, (340, 526))
+            frame = cv2.resize(frame, resolution)
             out.write(frame)
         else:
             cap.release()
             out.release()
 
 
-def post_process(skeleton_folder):
+def post_process(skeleton_folder, dst_folder, resolution=(340, 526)):
     file_names = [join(skeleton_folder, f) for f in os.listdir(skeleton_folder) if isfile(join(skeleton_folder, f)) and f.endswith('json')]
-    result = {'data': [], 'label': 0, 'label_index': 0}
-    for i, f in enumerate(file_names):
-        json = read_json(f)
-        frame_entry = {'frame_index': i+1, 'skeleton': []}
-        people = json['people']
-        for p in people:
-            k = np.array([float(c) for c in p['pose_keypoints_2d']])
-            pose = [j for idx, j in enumerate(k) if idx % 3 != 2]
-            score = [j for idx, j in enumerate(k) if idx % 3 == 2]
-            frame_entry['skeleton'].append({'pose': pose, 'score': score})
+    result = {'data': [], 'label': 0, 'label_index': 0}  # TODO: Set labels and stuff
+
+    for i in range(1, 300):
+        frame_entry = {'frame_index': i, 'skeleton': []}
+        if i < len(file_names):
+            json = read_json(file_names[i])
+            people = json['people']
+            for p in people:
+                k = np.array([float(c) for c in p['pose_keypoints_2d']])
+                x = np.round(k[::3] / resolution[0], 3)
+                y = np.round(k[1::3] / resolution[1], 3)
+                s = np.round(k[2::3], 3)
+                pose = [e for l in zip(x, y) for e in l]
+                frame_entry['skeleton'].append({'pose': pose, 'score': s.tolist()})
         result['data'].append(frame_entry)
-    write_json(result, join(skeleton_folder, f'{basename(skeleton_folder)}.json'))
+
+    write_json(result, join(dst_folder, f'{basename(skeleton_folder)}.json'))
+
+
+def preparation_pipepline(video_name, video_path, result_path):
+    openpose = 'C:/Users/TalBarami/PycharmProjects/openpose-1.5.1-binaries-win64-gpu-python-flir-3d_recommended/openpose'
+
+    unprocessed_video_path = join(video_path, video_name)
+    processed_video_path = join(result_path, video_name)
+    skeleton_path = join(result_path, splitext(video_name)[0])
+
+    pre_process(unprocessed_video_path, processed_video_path)
+    make_skeleton(openpose, processed_video_path, skeleton_path)
+    post_process(skeleton_path, join(result_path, 'data'))
+
 
 if __name__ == '__main__':
-    s = 'D:/research/kinetics_sample/train/skeleton/0aidJ-1R7Ds/v.avi'
-    # s = 'D:/research/v.avi'
-    cap = cv2.VideoCapture(s)
-    print(cap.get(cv2.CAP_PROP_FPS))
-    cap.set(cv2.CAP_PROP_FPS, 20.0)
-    print(cap.get(cv2.CAP_PROP_FPS))
-    print(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    print(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    cap.release()
+    s = 'C:/Users/TalBarami/Desktop/test'
+    t = 'C:/Users/TalBarami/Desktop/res'
+    v = '0aidJ-1R7Ds.mp4'
 
+    preparation_pipepline(v, s, t)
+
+    # cap = cv2.VideoCapture(s)
+    # print(cap.get(cv2.CAP_PROP_FPS))
+    # cap.set(cv2.CAP_PROP_FPS, 20.0)
+    # print(cap.get(cv2.CAP_PROP_FPS))
+    # print(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    # print(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    # cap.release()
+    # post_process(s)
     # pre_preocss(s, 'D:/research')
 
     # l = []
