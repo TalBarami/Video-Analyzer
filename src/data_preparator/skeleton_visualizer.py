@@ -5,7 +5,7 @@ import cv2
 import os
 from subprocess import check_call
 from os import listdir
-from os.path import isfile, join
+from os.path import isfile, join, basename
 from json.decoder import JSONDecodeError
 
 POSE_COCO_BODY_PARTS = {
@@ -192,11 +192,54 @@ def set_person_id(json_src, n=5, verbose=10000):
             print(f'frame: {i}')
 
 
+def pre_preocss(video_path, dst_path):
+    cap = cv2.VideoCapture(video_path)
+    cap.set(cv2.CAP_PROP_FPS, 30.0)
+    fourcc = cv2.VideoWriter_fourcc(*'XVID')
+    out = cv2.VideoWriter(join(dst_path, basename(video_path)), fourcc, 30.0, (340, 526))
+    while cap.isOpened():
+        ret, frame = cap.read()
+        if ret:
+            frame = cv2.resize(frame, (340, 526))
+            out.write(frame)
+        else:
+            cap.release()
+            out.release()
+
+
+def post_process(skeleton_folder):
+    file_names = [join(skeleton_folder, f) for f in os.listdir(skeleton_folder) if isfile(join(skeleton_folder, f)) and f.endswith('json')]
+    result = {'data': [], 'label': 0, 'label_index': 0}
+    for i, f in enumerate(file_names):
+        json = read_json(f)
+        frame_entry = {'frame_index': i+1, 'skeleton': []}
+        people = json['people']
+        for p in people:
+            k = np.array([float(c) for c in p['pose_keypoints_2d']])
+            pose = [j for idx, j in enumerate(k) if idx % 3 != 2]
+            score = [j for idx, j in enumerate(k) if idx % 3 == 2]
+            frame_entry['skeleton'].append({'pose': pose, 'score': score})
+        result['data'].append(frame_entry)
+    write_json(result, join(skeleton_folder, f'{basename(skeleton_folder)}.json'))
+
 if __name__ == '__main__':
-    l = []
-    for root, dirs, files in os.walk('D:/TalBarami/skeletons'):
-        if not dirs:
-            l.append(root)
-    for s in l:
-        print(f'handling person-id: {s}')
-        set_person_id(s)
+    s = 'D:/research/kinetics_sample/train/skeleton/0aidJ-1R7Ds/v.avi'
+    # s = 'D:/research/v.avi'
+    cap = cv2.VideoCapture(s)
+    print(cap.get(cv2.CAP_PROP_FPS))
+    cap.set(cv2.CAP_PROP_FPS, 20.0)
+    print(cap.get(cv2.CAP_PROP_FPS))
+    print(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    print(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    cap.release()
+
+    # pre_preocss(s, 'D:/research')
+
+    # l = []
+    # for root, dirs, files in os.walk('D:/research/Ados Recordings/225202662'):
+    #     if not dirs:
+    #         l.append(root)
+    # l = l[51:]
+    # for s in l:
+    #     print(f'handling person-id: {s}')
+    #     set_person_id(s)
