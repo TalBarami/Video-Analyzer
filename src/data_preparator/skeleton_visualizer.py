@@ -59,6 +59,7 @@ def make_skeleton(open_pose_path, vid_path, skeleton_dst):
 
 def visualize_frame(frame, json_path):
     if not isfile(json_path):
+        print(f'No such file: {json_path}')
         return
     with open(json_path, 'r') as json_file:
         skeletons = json.loads(json_file.read())
@@ -246,13 +247,25 @@ def preparation_pipepline(video_name, video_path, result_path):
     make_skeleton(openpose, processed_video_path, skeleton_path)
     post_process(skeleton_path, join(result_path, 'data'))
 
+def play_skeleton(json_path):
+    jsons = [f for f in listdir(json_path)]
+    img_size = (900, 900)
+
+    for j in jsons:
+        img = np.zeros(img_size)
+        visualize_frame(img, join(json_path, j))
+        cv2.imshow("foo", img)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
 
 if __name__ == '__main__':
-    s = 'C:/Users/TalBarami/Desktop/test'
-    t = 'C:/Users/TalBarami/Desktop/res'
-    v = '0aidJ-1R7Ds.mp4'
-
-    preparation_pipepline(v, s, t)
+    # play_skeleton('D:/research/Ados Recordings/225202662/225202662_ADOS_021218_0935_2')
+    set_person_id("D:/research/Ados Recordings/225202662/0")
+    # s = 'C:/Users/TalBarami/Desktop/test'
+    # t = 'C:/Users/TalBarami/Desktop/res'
+    # v = '0aidJ-1R7Ds.mp4'
+    #
+    # preparation_pipepline(v, s, t)
 
     # cap = cv2.VideoCapture(s)
     # print(cap.get(cv2.CAP_PROP_FPS))
