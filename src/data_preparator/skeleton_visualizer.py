@@ -45,7 +45,6 @@ POSE_COCO_PAIRS = [(0, 1), (1, 8),
 
 COLORS_ARRAY = [(0, 0, 255), (0, 255, 0), (255, 0, 0), (0, 255, 255), (255, 0, 255), (255, 255, 0), (128, 128, 128), (42, 42, 165)]
 
-
 def make_skeleton(open_pose_path, vid_path, skeleton_dst):
     cwd = os.getcwd()
     os.chdir(open_pose_path)
@@ -241,11 +240,11 @@ def preparation_pipepline(video_name, video_path, result_path):
 
     unprocessed_video_path = join(video_path, video_name)
     processed_video_path = join(result_path, video_name)
-    skeleton_path = join(result_path, splitext(video_name)[0])
+    skeleton_path = join(result_path, video_name_no_ext)
 
     pre_process(unprocessed_video_path, processed_video_path)
     make_skeleton(openpose, processed_video_path, skeleton_path)
-    post_process(skeleton_path, join(result_path, 'data'))
+    post_process(skeleton_path, join(result_path, video_name_no_ext))
 
 def play_skeleton(json_path):
     jsons = [f for f in listdir(json_path)]
