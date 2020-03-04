@@ -11,7 +11,7 @@ import PIL.ImageTk
 import cv2
 import numpy as np
 
-from src.data_preparator.skeleton_visualizer import visualize_frame
+from src.data_preparator.skeleton_visualizer import visualize_frame, POSE_BODY_25_PAIRS
 from src.labeling_app.data_handler import DataHandler
 from src.labeling_app.video_player import VideoPlayer
 from src.labeling_app.video_sync import VideoSync
@@ -115,7 +115,7 @@ class Display:
 
                     filename = f'{video_name}_{str(int(frame_number) + adjust).zfill(12)}_keypoints.json'
                     person_id = video_name.split('_', 1)[0]
-                    visualize_frame(frame, join(self.skeleton_folder, person_id, video_name, filename))
+                    visualize_frame(frame, join(self.skeleton_folder, person_id, video_name, filename), POSE_BODY_25_PAIRS)
                 except TclError as e:
                     print(f'Error: {e}')
 

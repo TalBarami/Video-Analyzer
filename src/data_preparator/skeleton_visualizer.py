@@ -3,12 +3,13 @@ import shlex
 import json
 import cv2
 import os
+import time
 from subprocess import check_call
 from os import listdir
 from os.path import isfile, join, basename, splitext
 from json.decoder import JSONDecodeError
 
-POSE_COCO_BODY_PARTS = {
+POSE_BODY_25_MAP = {
     0: "Nose",
     1: "Neck",
     2: "RShoulder",
@@ -36,14 +37,42 @@ POSE_COCO_BODY_PARTS = {
     24: "RHeel",
     25: "Background"
 }
-POSE_COCO_PAIRS = [(0, 1), (1, 8),
+POSE_BODY_25_PAIRS = [(0, 1), (1, 8),
+                      (1, 2), (2, 3), (3, 4),
+                      (1, 5), (5, 6), (6, 7),
+                      (8, 9), (9, 10), (10, 11), (11, 22), (11, 24), (22, 23),
+                      (8, 12), (12, 13), (13, 14), (14, 21), (14, 19), (19, 20),
+                      (0, 15), (15, 17), (0, 16), (16, 18)]
+
+POSE_COCO_MAP = {
+    0: "Nose",
+    1: "Neck",
+    2: "RShoulder",
+    3: "RElbow",
+    4: "RWrist",
+    5: "LShoulder",
+    6: "LElbow",
+    7: "LWrist",
+    8: "RHip",
+    9: "RKnee",
+    10: "RAnkle",
+    11: "LHip",
+    12: "LKnee",
+    13: "LAnkle",
+    14: "REye",
+    15: "LEye",
+    16: "REar",
+    17: "LEar"
+}
+POSE_COCO_PAIRS = [(0, 1),
                    (1, 2), (2, 3), (3, 4),
                    (1, 5), (5, 6), (6, 7),
-                   (8, 9), (9, 10), (10, 11), (11, 22), (11, 24), (22, 23),
-                   (8, 12), (12, 13), (13, 14), (14, 21), (14, 19), (19, 20),
-                   (0, 15), (15, 17), (0, 16), (16, 18)]
+                   (1, 8), (8, 9), (9, 10),
+                   (1, 11), (11, 12), (12, 13),
+                   (0, 15), (15, 17), (0, 14), (14, 16)]
 
 COLORS_ARRAY = [(0, 0, 255), (0, 255, 0), (255, 0, 0), (0, 255, 255), (255, 0, 255), (255, 255, 0), (128, 128, 128), (42, 42, 165)]
+
 
 def make_skeleton(open_pose_path, vid_path, skeleton_dst):
     cwd = os.getcwd()
@@ -56,7 +85,7 @@ def make_skeleton(open_pose_path, vid_path, skeleton_dst):
     os.chdir(cwd)
 
 
-def visualize_frame(frame, json_path):
+def visualize_frame(frame, json_path, skeleton_type):
     if not isfile(json_path):
         print(f'No such file: {json_path}')
         return
@@ -67,9 +96,9 @@ def visualize_frame(frame, json_path):
             p = p['pose_keypoints_2d']
 
             c = [(int(p[i]), int(p[i + 1])) for i in range(0, len(p), 3)]
-            for v1, v2 in POSE_COCO_PAIRS:
+            color = COLORS_ARRAY[pid] if pid < len(COLORS_ARRAY) else (255, 255, 255)
+            for v1, v2 in skeleton_type:
                 if not (c[v1][0] + c[v1][1] == 0 or c[v2][0] + c[v2][1] == 0):
-                    color = COLORS_ARRAY[pid] if pid < len(COLORS_ARRAY) else (255, 255, 255)
                     cv2.line(frame, c[v1], c[v2], color, 3)
 
 
@@ -202,12 +231,11 @@ def pre_process(video, dst, resolution=(340, 526)):
     cap.set(cv2.CAP_PROP_FPS, 30.0)
     # fourcc = cv2.VideoWriter_fourcc(*'XVID') # For AVI?
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    # fourcc = 0x00000021 # For MP4?
     out = cv2.VideoWriter(dst, fourcc, 30.0, (340, 526))
     while cap.isOpened():
         ret, frame = cap.read()
         if ret:
-            frame = cv2.resize(frame, resolution)
+            frame = cv2.resize(cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE), resolution)
             out.write(frame)
         else:
             cap.release()
@@ -238,6 +266,7 @@ def post_process(skeleton_folder, dst_folder, resolution=(340, 526)):
 def preparation_pipepline(video_name, video_path, result_path):
     openpose = 'C:/Users/TalBarami/PycharmProjects/openpose-1.5.1-binaries-win64-gpu-python-flir-3d_recommended/openpose'
 
+    video_name_no_ext = splitext(video_name)[0]
     unprocessed_video_path = join(video_path, video_name)
     processed_video_path = join(result_path, video_name)
     skeleton_path = join(result_path, video_name_no_ext)
@@ -246,20 +275,57 @@ def preparation_pipepline(video_name, video_path, result_path):
     make_skeleton(openpose, processed_video_path, skeleton_path)
     post_process(skeleton_path, join(result_path, video_name_no_ext))
 
-def play_skeleton(json_path):
+
+def play_openpose_skeleton(json_path):
     jsons = [f for f in listdir(json_path)]
-    img_size = (900, 900)
+    img_size = (1200, 1200, 3)
 
     for j in jsons:
         img = np.zeros(img_size)
-        visualize_frame(img, join(json_path, j))
+        visualize_frame(img, join(json_path, j), POSE_COCO_PAIRS)
         cv2.imshow("foo", img)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
+
+def visualize_frame_skel(frame, skeletons):
+    for p in skeletons['people']:
+        pid = p['person_id']
+        p = p['pose_keypoints_2d']
+
+        c = [(int(p[i]), int(p[i + 1])) for i in range(0, len(p), 3)]
+        for v1, v2 in POSE_BODY_25_PAIRS:
+            if not (c[v1][0] + c[v1][1] == 0 or c[v2][0] + c[v2][1] == 0):
+                color = COLORS_ARRAY[pid] if pid < len(COLORS_ARRAY) else (255, 255, 255)
+                cv2.line(frame, c[v1], c[v2], color, 3)
+
+
+def play_skeleton(M):
+    img_size = (1200, 1200, 3)
+    M *= 50
+    M += 500
+    for i in range(300):
+        img = np.zeros(img_size)
+        for p in range(2):
+            for v1, v2 in POSE_COCO_PAIRS:
+                x1, y1 = M[p][0][i][v1], M[p][1][i][v1]
+                x2, y2 = M[p][0][i][v2], M[p][1][i][v2]
+                if not (x1 + y1 == 0 or x2 + y2 == 0):
+                    cv2.line(img, (x1, y1), (x2, y2), (255, 255, 255), 3)
+
+        cv2.imshow("foo", img)
+        time.sleep(0.001)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+
+import torch
+
 if __name__ == '__main__':
-    # play_skeleton('D:/research/Ados Recordings/225202662/225202662_ADOS_021218_0935_2')
-    set_person_id("D:/research/Ados Recordings/225202662/0")
+    # preparation_pipepline('alon.mp4', 'C:/Users/TalBarami/PycharmProjects/Video-Analyzer/src/data_preparator/ac', 'C:/Users/TalBarami/PycharmProjects/Video-Analyzer/src/data_preparator/ac/out')
+
+    M = torch.load('C:/Users/TalBarami/PycharmProjects/Video-Analyzer/src/data_preparator/ac/out_9.pt').data.cpu().numpy()
+    play_skeleton(M)
+    # play_openpose_skeleton('C:/Users/TalBarami/PycharmProjects/Video-Analyzer/src/data_preparator/ac/out/alon')
     # s = 'C:/Users/TalBarami/Desktop/test'
     # t = 'C:/Users/TalBarami/Desktop/res'
     # v = '0aidJ-1R7Ds.mp4'
