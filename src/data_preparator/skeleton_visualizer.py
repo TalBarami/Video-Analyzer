@@ -1,13 +1,11 @@
-import numpy as np
-import shlex
 import json
-import cv2
-import os
 import time
-from subprocess import check_call
 from os import listdir
-from os.path import isfile, join, basename, splitext
-from json.decoder import JSONDecodeError
+from os.path import isfile, join
+
+import cv2
+import numpy as np
+import torch
 
 POSE_BODY_25_MAP = {
     0: "Nose",
@@ -74,18 +72,13 @@ POSE_COCO_PAIRS = [(0, 1),
 COLORS_ARRAY = [(0, 0, 255), (0, 255, 0), (255, 0, 0), (0, 255, 255), (255, 0, 255), (255, 255, 0), (128, 128, 128), (42, 42, 165)]
 
 
-def make_skeleton(open_pose_path, vid_path, skeleton_dst):
-    cwd = os.getcwd()
-    os.chdir(open_pose_path)
-
-    cmd = f'bin/OpenPoseDemo.exe --video "{vid_path}" --model_pose COCO --write_json "{skeleton_dst}" --display 0 --render_pose 0'
-    print("About to run: {}".format(cmd))
-    check_call(shlex.split(cmd), universal_newlines=True)
-
-    os.chdir(cwd)
+def draw_skeleton(frame, pose, score, color, skeleton_type, epsilon=1e-3):
+    for i, (v1, v2) in enumerate(skeleton_type):
+        if score[v1] > epsilon and score[v2] > epsilon:
+            cv2.line(frame, pose[v1], pose[v2], color, thickness=3)
 
 
-def visualize_frame(frame, json_path, skeleton_type):
+def visualize_frame_pre_processed(frame, json_path, skeleton_type):
     if not isfile(json_path):
         print(f'No such file: {json_path}')
         return
@@ -94,237 +87,114 @@ def visualize_frame(frame, json_path, skeleton_type):
         for p in skeletons['people']:
             pid = p['person_id']
             p = p['pose_keypoints_2d']
-
-            c = [(int(p[i]), int(p[i + 1])) for i in range(0, len(p), 3)]
+            pose = [(int(p[i]), int(p[i + 1])) for i in range(0, len(p), 3)]
+            score = [p[i] for i in range(2, len(p), 3)]
             color = COLORS_ARRAY[pid] if pid < len(COLORS_ARRAY) else (255, 255, 255)
-            for v1, v2 in skeleton_type:
-                if not (c[v1][0] + c[v1][1] == 0 or c[v2][0] + c[v2][1] == 0):
-                    cv2.line(frame, c[v1], c[v2], color, 3)
+
+            draw_skeleton(frame, pose, score, color, skeleton_type)
 
 
-def read_json(file):
-    try:
-        with open(file, 'r') as j:
-            return json.loads(j.read())
-    except (OSError, UnicodeDecodeError, JSONDecodeError) as e:
-        print(f'Error while reading json file: {file}')
-        print(e)
-        return
+def visualize_frame_post_processed(frame, video_data, frame_number, skeleton_type):
+    if frame_number not in range(0, len(video_data)):
+        print(f'Invalid frame number: {frame_number}. Expected between: 0 and {len(video_data)}')
+
+    for p in video_data[frame_number]['skeleton']:
+        draw_skeleton(frame, [x for x in zip(p['pose'][0::2], p['pose'][1::2])], p['score'], (255, 255, 255), skeleton_type)
 
 
-def write_json(j, dst):
-    with open(dst, 'w') as f:
-        json.dump(j, f)
+def visualize_frame_tensor(frame, M, frame_number, skeleton_type):
+    P, F, T, V = M.shape  # People, Features, Time, Vertices
+    P = 1  # TODO: Currently supports only 1 person
+    for p in range(P):
+        pose = [(M[p][0][frame_number][i], M[p][1][frame_number][i]) for i in range(V)]
+        score = [M[p][2][frame_number][i] for i in range(V)]
+        draw_skeleton(frame, pose, score, (255, 255, 255), skeleton_type)
 
 
-# def distance(p1, p2):
-#     k1 = np.array([float(c) for c in p1['pose_keypoints_2d']])
-#     k2 = np.array([float(c) for c in p2['pose_keypoints_2d']])
-#     epsilon = 1e-3
-#     xy1 = []
-#     xy2 = []
-#     for i in range(0, len(p1['pose_keypoints_2d']), 3):
-#         if k1[i + 2] < epsilon or k2[i + 1] < epsilon:
-#             continue
-#         xy1 += [k1[i], k1[i + 1]]
-#         xy2 += [k2[i], k2[i + 1]]
-#
-#     return np.sum(np.power(np.array(xy1) - np.array(xy2), 2))
+def play_skeleton(skeleton, method, resolution=(340, 512)):
+    def pre_processed(jsons_dir):
+        jsons = [f for f in listdir(jsons_dir)]
+        return len(jsons), lambda img, i: visualize_frame_pre_processed(img, join(jsons_dir, jsons[i]), POSE_COCO_PAIRS)
 
-def distance(p1, p2):
-    x1, y1 = center_of_mass(p1)
-    x2, y2 = center_of_mass(p2)
+    def post_processed(json_path):
+        if not isfile(json_path):
+            print(f'No such file: {json_path}')
+            return
+        with open(json_path, 'r') as json_file:
+            # img_size = (1200, 1200, 3)
+            video_data = json.loads(json_file.read())['data']
+            for i in range(len(video_data)):
+                for p in video_data[i]['skeleton']:
+                    for k in range(len(p['pose'])):
+                        p['pose'][k] = int(p['pose'][k] * resolution[k % 2])
+        return len(video_data), lambda img, i: visualize_frame_post_processed(img, video_data, i, POSE_COCO_PAIRS)
 
-    if not any([x for x in [x1, x2, y1, y2] if x is np.NaN]):
-        return np.sqrt(np.power(x1 - x2, 2) + np.power(y1 - y2, 2))
-    else:
-        return np.inf
+    def tensor(M):
+        scale = 30
+        P, F, T, V = M.shape  # People, Features, Time, Vertices
+        for i in range(P):
+            M[i][0] += np.abs(M[i][0].min())
+            M[i][0] *= scale
+            M[i][1] += np.abs(M[i][1].min())
+            M[i][1] *= scale * (resolution[1] / resolution[0])
+        return T, lambda img, i: visualize_frame_tensor(img, M, i, POSE_COCO_PAIRS)
 
+    methods = {'pre-processed': pre_processed,
+               'post-processed':post_processed,
+               'tensor': tensor}
 
-def center_of_mass(p):
-    k = np.array([float(c) for c in p['pose_keypoints_2d']])
-    coords = [c for c in zip(k[::3], k[1::3], k[2::3])]
-    threshold = 0.1
-
-    x = np.array([c[0] for c in coords if c[2] > threshold]).mean()
-    y = np.array([c[1] for c in coords if c[2] > threshold]).mean()
-
-    return x, y
-
-
-def find_closest(p, prevs):
-    ids = set([pi['person_id'] for pi in prevs])
-    id_weights = dict([(i, []) for i in ids])
-    for pi in prevs:
-        d = distance(p, pi)
-        id_weights[pi['person_id']].append(d)
-
-    for i in ids:
-        id_weights[i] = np.mean(id_weights[i])
-
-    if len(id_weights) > 0:
-        selected_id = min(id_weights, key=id_weights.get)
-        selected_weight = id_weights[selected_id]
-    else:
-        selected_id = 0
-        selected_weight = 0
-    return selected_id, selected_weight
-
-
-def match_frames(ps, prevs):
-    def gen_id(ps):
-        ids = [p['person_id'] for p in ps]
-        i = 0
-        while i in ids:
-            i += 1
-        return i
-
-    found = {}
-    for p in ps:
-        new_id, d_new = find_closest(p, prevs)
-        if new_id in found:
-            p_old, d_old = found[new_id]
-            generated_id = gen_id(prevs + [v[0] for v in found.values()])
-            if d_old < d_new:
-                new_id = generated_id
-            else:
-                p_old['person_id'] = generated_id
-                found[generated_id] = (p_old, d_old)
-                p['person_id'] = new_id
-        p['person_id'] = new_id
-        found[new_id] = (p, d_new)
-
-
-def set_person_id(json_src, n=5, verbose=10000):
-    file_names = [f for f in listdir(json_src) if isfile(join(json_src, f)) and f.endswith('json')]
-
-    def src_path(i):
-        return join(json_src, file_names[i])
-
-    def dst_path(i):
-        return join(json_src, file_names[i])
-
-    jsons = [read_json(src_path(0))]
-    for idx, p in enumerate(jsons[0]['people']):
-        p['person_id'] = idx
-    write_json(jsons[0], dst_path(0))
-
-    for i in range(1, len(file_names)):
-        jsons.append(read_json(src_path(i)))
-        people = jsons[i]['people']
-
-        prevs = []
-        for j in range(min(n, i)):
-            for p in jsons[j]['people']:
-                prevs.append(p)
-
-        match_frames(people, prevs)
-
-        write_json(jsons[i], dst_path(i))
-
-        if i % verbose == 0:
-            print(f'frame: {i}')
-
-
-def pre_process(video, dst, resolution=(340, 526)):
-    cap = cv2.VideoCapture(video)
-    cap.set(cv2.CAP_PROP_FPS, 30.0)
-    # fourcc = cv2.VideoWriter_fourcc(*'XVID') # For AVI?
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    out = cv2.VideoWriter(dst, fourcc, 30.0, (340, 526))
-    while cap.isOpened():
-        ret, frame = cap.read()
-        if ret:
-            frame = cv2.resize(cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE), resolution)
-            out.write(frame)
-        else:
-            cap.release()
-            out.release()
-
-
-def post_process(skeleton_folder, dst_folder, resolution=(340, 526)):
-    file_names = [join(skeleton_folder, f) for f in os.listdir(skeleton_folder) if isfile(join(skeleton_folder, f)) and f.endswith('json')]
-    result = {'data': [], 'label': 0, 'label_index': 0}  # TODO: Set labels and stuff
-
-    for i in range(1, 300):
-        frame_entry = {'frame_index': i, 'skeleton': []}
-        if i < len(file_names):
-            json = read_json(file_names[i])
-            people = json['people']
-            for p in people:
-                k = np.array([float(c) for c in p['pose_keypoints_2d']])
-                x = np.round(k[::3] / resolution[0], 3)
-                y = np.round(k[1::3] / resolution[1], 3)
-                s = np.round(k[2::3], 3)
-                pose = [e for l in zip(x, y) for e in l]
-                frame_entry['skeleton'].append({'pose': pose, 'score': s.tolist()})
-        result['data'].append(frame_entry)
-
-    write_json(result, join(dst_folder, f'{basename(skeleton_folder)}.json'))
-
-
-def preparation_pipepline(video_name, video_path, result_path):
-    openpose = 'C:/Users/TalBarami/PycharmProjects/openpose-1.5.1-binaries-win64-gpu-python-flir-3d_recommended/openpose'
-
-    video_name_no_ext = splitext(video_name)[0]
-    unprocessed_video_path = join(video_path, video_name)
-    processed_video_path = join(result_path, video_name)
-    skeleton_path = join(result_path, video_name_no_ext)
-
-    pre_process(unprocessed_video_path, processed_video_path)
-    make_skeleton(openpose, processed_video_path, skeleton_path)
-    post_process(skeleton_path, join(result_path, video_name_no_ext))
-
-
-def play_openpose_skeleton(json_path):
-    jsons = [f for f in listdir(json_path)]
+    frames, f = methods[method](skeleton)
     img_size = (1200, 1200, 3)
-
-    for j in jsons:
+    for i in range(frames):
         img = np.zeros(img_size)
-        visualize_frame(img, join(json_path, j), POSE_COCO_PAIRS)
+        f(img, i)
         cv2.imshow("foo", img)
+        time.sleep(0.01)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
 
-def visualize_frame_skel(frame, skeletons):
-    for p in skeletons['people']:
-        pid = p['person_id']
-        p = p['pose_keypoints_2d']
+def visualize_features(M, filename):
+    P, F, T, V = M.shape  # People, Features, Time, Vertices
+    P = 1
 
-        c = [(int(p[i]), int(p[i + 1])) for i in range(0, len(p), 3)]
-        for v1, v2 in POSE_BODY_25_PAIRS:
-            if not (c[v1][0] + c[v1][1] == 0 or c[v2][0] + c[v2][1] == 0):
-                color = COLORS_ARRAY[pid] if pid < len(COLORS_ARRAY) else (255, 255, 255)
-                cv2.line(frame, c[v1], c[v2], color, 3)
+    size = 20
+    sepX = 0
+    sepY = 10
+    vertex_text = 100
+    feature_sep = 50
 
+    img_size = (F * (V * (size + sepY) + feature_sep), 2 * vertex_text + T * (size + sepX))
+    img = np.zeros(img_size)
+    for p in range(P):
+        y = feature_sep
+        for f in range(F):
+            cv2.putText(img, f'feature {f}', (5 * size, y - size), cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=255, lineType=2)
+            for v in range(V):
+                cv2.putText(img, f'{POSE_COCO_MAP[v]}', (size, y + size), cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=255, lineType=2)
+                cv2.putText(img, f'{POSE_COCO_MAP[v]}', (img_size[1] - vertex_text + size, y + size), cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=255, lineType=2)
+                c = np.array(M[p][f]).T[v]
+                c = np.nan_to_num((c - np.min(c)) / np.ptp(c))
+                x = vertex_text
+                for t in range(T):
+                    cv2.rectangle(img, (x, y), (x + size, y + size), float(c[t]), cv2.FILLED)
+                    x += size + sepX
+                y += size + sepY
+            y += feature_sep
+    # cv2.imshow('foo', img)
+    # cv2.waitKey(0)
+    cv2.imwrite(f'{filename}.jpg', img * 255)
 
-def play_skeleton(M):
-    img_size = (1200, 1200, 3)
-    M *= 50
-    M += 500
-    for i in range(300):
-        img = np.zeros(img_size)
-        for p in range(2):
-            for v1, v2 in POSE_COCO_PAIRS:
-                x1, y1 = M[p][0][i][v1], M[p][1][i][v1]
-                x2, y2 = M[p][0][i][v2], M[p][1][i][v2]
-                if not (x1 + y1 == 0 or x2 + y2 == 0):
-                    cv2.line(img, (x1, y1), (x2, y2), (255, 255, 255), 3)
-
-        cv2.imshow("foo", img)
-        time.sleep(0.001)
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
-
-import torch
 
 if __name__ == '__main__':
     # preparation_pipepline('alon.mp4', 'C:/Users/TalBarami/PycharmProjects/Video-Analyzer/src/data_preparator/ac', 'C:/Users/TalBarami/PycharmProjects/Video-Analyzer/src/data_preparator/ac/out')
 
-    M = torch.load('C:/Users/TalBarami/PycharmProjects/Video-Analyzer/src/data_preparator/ac/out_9.pt').data.cpu().numpy()
-    play_skeleton(M)
+    for i in range(11):
+        M = torch.load(f'C:/Users/TalBarami/PycharmProjects/Video-Analyzer/src/data_preparator/ac/out_{i}.pt').data.cpu().numpy()
+        visualize_features(M, f'ac/res/out_{i}')
+    # play_skeleton(M, 'tensor')
+    # play_skeleton('C:/Users/TalBarami/PycharmProjects/Video-Analyzer/src/data_preparator/ac/out/alon/alon.json', 'post-processed')
+
     # play_openpose_skeleton('C:/Users/TalBarami/PycharmProjects/Video-Analyzer/src/data_preparator/ac/out/alon')
     # s = 'C:/Users/TalBarami/Desktop/test'
     # t = 'C:/Users/TalBarami/Desktop/res'
