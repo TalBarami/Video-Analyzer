@@ -153,7 +153,6 @@ def play_skeleton(skeleton, method, resolution=(340, 512)):
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
-
 def visualize_features(M, filename):
     P, F, T, V = M.shape  # People, Features, Time, Vertices
     P = 1
@@ -189,9 +188,16 @@ def visualize_features(M, filename):
 if __name__ == '__main__':
     # preparation_pipepline('alon.mp4', 'C:/Users/TalBarami/PycharmProjects/Video-Analyzer/src/data_preparator/ac', 'C:/Users/TalBarami/PycharmProjects/Video-Analyzer/src/data_preparator/ac/out')
 
-    for i in range(11):
-        M = torch.load(f'C:/Users/TalBarami/PycharmProjects/Video-Analyzer/src/data_preparator/ac/out_{i}.pt').data.cpu().numpy()
+    for i in range(1, 11):
+        M = torch.load(f'C:/Users/TalBarami/PycharmProjects/Video-Analyzer/src/data_preparator/ac/nicky/net_outputs/out_{i}').data.cpu().numpy()
         visualize_features(M, f'ac/res/out_{i}')
+
+    for i in range(1, 11):
+        M = torch.load(f'C:/Users/TalBarami/PycharmProjects/Video-Analyzer/src/data_preparator/ac/nicky/net_outputs/in_{i}').data.cpu().numpy()
+        visualize_features(M, f'ac/res/in_{i}')
+
+    # play_skeleton('C:/Users/TalBarami/PycharmProjects/Video-Analyzer/src/data_preparator/ac/nicky/nicky.json', 'post-processed')
+
     # play_skeleton(M, 'tensor')
     # play_skeleton('C:/Users/TalBarami/PycharmProjects/Video-Analyzer/src/data_preparator/ac/out/alon/alon.json', 'post-processed')
 

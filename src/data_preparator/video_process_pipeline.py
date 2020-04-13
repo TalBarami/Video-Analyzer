@@ -3,8 +3,10 @@ import os
 import shlex
 from json.decoder import JSONDecodeError
 from os import listdir
-from os.path import isfile, join, basename, splitext
+from os.path import isfile, join, basename, splitext, dirname
 from subprocess import check_call
+from pytube import YouTube
+from moviepy.video.io.ffmpeg_tools import ffmpeg_extract_subclip
 
 import cv2
 import numpy as np
@@ -25,11 +27,12 @@ def write_json(j, dst):
         json.dump(j, f)
 
 
-def make_skeleton(open_pose_path, vid_path, skeleton_dst):
+def make_skeleton(open_pose_path, vid_path, skeleton_dst, with_video=False):
     cwd = os.getcwd()
     os.chdir(open_pose_path)
 
-    cmd = f'bin/OpenPoseDemo.exe --video "{vid_path}" --model_pose COCO --write_json "{skeleton_dst}" --display 0 --render_pose 0'
+    video_cmd = f'--write_video \"{join(dirname(skeleton_dst),basename(skeleton_dst))}.avi\"' if with_video else ''
+    cmd = f'bin/OpenPoseDemo.exe --video "{vid_path}" --model_pose COCO --write_json "{skeleton_dst}" --display 0 --render_pose 1 {video_cmd}'
     print("About to run: {}".format(cmd))
     check_call(shlex.split(cmd), universal_newlines=True)
 
@@ -154,7 +157,8 @@ def pre_process(video, dst, resolution=(340, 512)):
     while cap.isOpened():
         ret, frame = cap.read()
         if ret:
-            frame = cv2.resize(cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE), resolution)
+            frame = cv2.resize(frame, resolution)
+            # frame = cv2.resize(cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE), resolution)
             out.write(frame)
         else:
             cap.release()
@@ -181,8 +185,20 @@ def post_process(skeleton_folder, dst_folder, resolution=(340, 512)):
 
     write_json(result, join(dst_folder, f'{basename(skeleton_folder)}.json'))
 
+def get_video(url, segment, dst):
+    video = YouTube(url)
+    process_dir = join(dst, 'in_process')
+    filename = f'{video.title}.mp4'
+    out_path = join(dst, 'processed', filename)
+    process_path = join(process_dir, filename)
 
-def preparation_pipepline(video_name, video_path, result_path):
+    video.streams.first().download(process_dir)
+
+    ffmpeg_extract_subclip(process_path, segment[0], segment[1], targetname=out_path)
+    os.remove(process_path)
+    return video
+
+def preparation_pipepline(video_name, video_path, result_path, skeleton_video=False):
     openpose = 'C:/Users/TalBarami/PycharmProjects/openpose-1.5.1-binaries-win64-gpu-python-flir-3d_recommended/openpose'
 
     video_name_no_ext = splitext(video_name)[0]
@@ -191,8 +207,13 @@ def preparation_pipepline(video_name, video_path, result_path):
     skeleton_path = join(result_path, video_name_no_ext)
 
     pre_process(unprocessed_video_path, processed_video_path)
-    make_skeleton(openpose, processed_video_path, skeleton_path)
+    make_skeleton(openpose, processed_video_path, skeleton_path, with_video=skeleton_video)
     post_process(skeleton_path, result_path)
 
 if __name__ == '__main__':
-    preparation_pipepline('nicky.mp4', 'C:/Users/TalBarami/Desktop/New folder', 'C:/Users/TalBarami/Desktop/New folder/out')
+    train = read_json('C:/Users/TalBarami/Desktop/kinetics400/subset/train.json')
+    data = train['-D03cnNac3g']
+
+    video = get_video(data['url'], data['annotations']['segment'], 'C:/Users/TalBarami/Desktop/kinetics400/subset/')
+
+    preparation_pipepline(f'{video.title}.mp4', 'C:/Users/TalBarami/Desktop/kinetics400/subset/processed', 'C:/Users/TalBarami/Desktop/kinetics400/subset/ready', True)
