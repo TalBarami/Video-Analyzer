@@ -7,7 +7,7 @@ from os.path import isfile, join, basename, splitext, dirname
 from subprocess import check_call
 from pytube import YouTube
 from moviepy.video.io.ffmpeg_tools import ffmpeg_extract_subclip
-
+import shutil
 import cv2
 import numpy as np
 
@@ -31,8 +31,9 @@ def make_skeleton(open_pose_path, vid_path, skeleton_dst, with_video=False):
     cwd = os.getcwd()
     os.chdir(open_pose_path)
 
-    video_cmd = f'--write_video \"{join(dirname(skeleton_dst),basename(skeleton_dst))}.avi\"' if with_video else ''
-    cmd = f'bin/OpenPoseDemo.exe --video "{vid_path}" --model_pose COCO --write_json "{skeleton_dst}" --display 0 --render_pose 1 {video_cmd}'
+    write_video = f'--write_video \"{join(dirname(skeleton_dst),basename(skeleton_dst))}.avi\"' if with_video else ''
+    render_pose = f'--render_pose {1 if with_video else 0}'
+    cmd = f'bin/OpenPoseDemo.exe --video "{vid_path}" --model_pose COCO --write_json "{skeleton_dst}" --display 0 {render_pose} {write_video}'
     print("About to run: {}".format(cmd))
     check_call(shlex.split(cmd), universal_newlines=True)
 
@@ -185,14 +186,14 @@ def post_process(skeleton_folder, dst_folder, resolution=(340, 512)):
 
     write_json(result, join(dst_folder, f'{basename(skeleton_folder)}.json'))
 
-def get_video(url, segment, dst):
+def get_video(url, vid, segment, dst):
     video = YouTube(url)
     process_dir = join(dst, 'in_process')
-    filename = f'{video.title}.mp4'
+    filename = f'{vid}.mp4'
     out_path = join(dst, 'processed', filename)
     process_path = join(process_dir, filename)
-
     video.streams.first().download(process_dir)
+    os.rename(join(process_dir, f'{video.title}.mp4'), join(process_dir, filename))
 
     ffmpeg_extract_subclip(process_path, segment[0], segment[1], targetname=out_path)
     os.remove(process_path)
@@ -210,10 +211,16 @@ def preparation_pipepline(video_name, video_path, result_path, skeleton_video=Fa
     make_skeleton(openpose, processed_video_path, skeleton_path, with_video=skeleton_video)
     post_process(skeleton_path, result_path)
 
+
+def download_and_prepare_dataset(path_to_file):
+    data = read_json(path_to_file)
+    for vid, data in data.items():
+        try:
+            video = get_video(data['url'], vid, data['annotations']['segment'], 'C:/Users/TalBarami/Desktop/kinetics400/subset/')
+            preparation_pipepline(f'{vid}.mp4', 'C:/Users/TalBarami/Desktop/kinetics400/subset/processed', 'C:/Users/TalBarami/Desktop/kinetics400/subset/ready', False)
+            shutil.move(f'C:/Users/TalBarami/Desktop/kinetics400/subset/ready/{vid}.json', f'C:/Users/TalBarami/Desktop/kinetics400/subset/upload/{vid}.json')
+        except Exception as e:
+            print(e)
+
 if __name__ == '__main__':
-    train = read_json('C:/Users/TalBarami/Desktop/kinetics400/subset/train.json')
-    data = train['-D03cnNac3g']
-
-    video = get_video(data['url'], data['annotations']['segment'], 'C:/Users/TalBarami/Desktop/kinetics400/subset/')
-
-    preparation_pipepline(f'{video.title}.mp4', 'C:/Users/TalBarami/Desktop/kinetics400/subset/processed', 'C:/Users/TalBarami/Desktop/kinetics400/subset/ready', True)
+    print('hello')
