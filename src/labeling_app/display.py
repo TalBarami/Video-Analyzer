@@ -24,7 +24,7 @@ class Display:
         self.video_paths = None
         self.videos = []
         self.video_sync = VideoSync(lambda: self.videos, self.set_play_button_name)
-        self.skeleton_folder = 'D:/TalBarami/skeletons'
+        self.skeleton_folder = 'D:/research/Ados Recordings/'
 
         self.data_handler = DataHandler()
         self.root = Tk()

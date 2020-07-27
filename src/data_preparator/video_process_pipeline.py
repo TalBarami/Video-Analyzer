@@ -7,6 +7,7 @@ from os.path import isfile, join, basename, splitext, dirname
 from subprocess import check_call
 from pytube import YouTube
 from moviepy.video.io.ffmpeg_tools import ffmpeg_extract_subclip
+from pathlib import Path
 import shutil
 import cv2
 import numpy as np
@@ -189,8 +190,13 @@ def post_process(skeleton_folder, dst_folder, resolution=(340, 512)):
 def get_video(url, vid, segment, dst):
     video = YouTube(url)
     process_dir = join(dst, 'in_process')
+    out_dir = join(dst, 'processed')
+    Path(join(process_dir)).mkdir(parents=True, exist_ok=True)
+    Path(join(out_dir)).mkdir(parents=True, exist_ok=True)
+
     filename = f'{vid}.mp4'
-    out_path = join(dst, 'processed', filename)
+    out_path = join(out_dir, filename)
+
     process_path = join(process_dir, filename)
     video.streams.first().download(process_dir)
     os.rename(join(process_dir, f'{video.title}.mp4'), join(process_dir, filename))
@@ -201,6 +207,7 @@ def get_video(url, vid, segment, dst):
 
 def preparation_pipepline(video_name, video_path, result_path, skeleton_video=False):
     openpose = 'C:/Users/TalBarami/PycharmProjects/openpose-1.5.1-binaries-win64-gpu-python-flir-3d_recommended/openpose'
+    Path(result_path).mkdir(parents=True, exist_ok=True)
 
     video_name_no_ext = splitext(video_name)[0]
     unprocessed_video_path = join(video_path, video_name)
@@ -212,15 +219,52 @@ def preparation_pipepline(video_name, video_path, result_path, skeleton_video=Fa
     post_process(skeleton_path, result_path)
 
 
-def download_and_prepare_dataset(path_to_file):
-    data = read_json(path_to_file)
-    for vid, data in data.items():
+def download_and_prepare_dataset(dataset_dir, dataset_name):
+    dataset_name_no_ext = splitext(dataset_name)[0]
+    out_dir = join(dataset_dir, dataset_name_no_ext)
+    Path(join(out_dir, 'upload')).mkdir(parents=True, exist_ok=True)
+
+    dataset = read_json(join(dataset_dir, dataset_name))
+    for vid, data in dataset.items():
         try:
-            video = get_video(data['url'], vid, data['annotations']['segment'], 'C:/Users/TalBarami/Desktop/kinetics400/subset/')
-            preparation_pipepline(f'{vid}.mp4', 'C:/Users/TalBarami/Desktop/kinetics400/subset/processed', 'C:/Users/TalBarami/Desktop/kinetics400/subset/ready', False)
-            shutil.move(f'C:/Users/TalBarami/Desktop/kinetics400/subset/ready/{vid}.json', f'C:/Users/TalBarami/Desktop/kinetics400/subset/upload/{vid}.json')
+            video = get_video(data['url'], vid, data['annotations']['segment'], out_dir)
+            preparation_pipepline(f'{vid}.mp4', join(out_dir, 'processed'), join(out_dir, 'ready'), False)
+            shutil.move(join(out_dir, 'ready', f'{vid}.json'), join(out_dir, 'upload', f'{vid}.json'))
         except Exception as e:
             print(e)
+    print('Videos preparation finished.')
+
+    with open('label_name.txt') as f:
+        all_labels = f.read().splitlines()
+    label_file = {}
+    for vid, data in dataset.items():
+        json_path = join(out_dir, 'upload', f'{vid}.json')
+        label = data['annotations']['label']
+        label_index = all_labels.index(label)
+        path_found = os.path.exists(json_path)
+        label_file[f'{vid}'] = {
+            'has_skeleton': path_found,
+            'label': label,
+            'label_index': label_index
+        }
+        if path_found:
+            j = read_json(json_path)
+            j['label'] = label
+            j['label_index'] = label_index
+            write_json(j, json_path)
+    write_json(label_file, join(out_dir, 'label.json'))
+    print('Labels preparation finished.')
+
+def kinetics_subset(src, dst, labels):
+    with open(src) as f:
+        dataset = json.load(f)
+
+    dataset = {v: info for v, info in dataset.items() if info['annotations']['label'] in labels}
+    print(len(dataset))
+
+    with open(dst, 'w') as f:
+        json.dump(dataset, f)
+
 
 if __name__ == '__main__':
     print('hello')
