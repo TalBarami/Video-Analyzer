@@ -5,7 +5,6 @@ from os.path import isfile, join
 
 import cv2
 import numpy as np
-import torch
 
 POSE_BODY_25_MAP = {
     0: "Nose",
@@ -186,15 +185,7 @@ def visualize_features(M, filename):
 
 
 if __name__ == '__main__':
-    # preparation_pipepline('alon.mp4', 'C:/Users/TalBarami/PycharmProjects/Video-Analyzer/src/data_preparator/ac', 'C:/Users/TalBarami/PycharmProjects/Video-Analyzer/src/data_preparator/ac/out')
-
-    for i in range(1, 11):
-        M = torch.load(f'C:/Users/TalBarami/PycharmProjects/Video-Analyzer/src/data_preparator/ac/nicky/net_outputs/out_{i}').data.cpu().numpy()
-        visualize_features(M, f'ac/res/out_{i}')
-
-    for i in range(1, 11):
-        M = torch.load(f'C:/Users/TalBarami/PycharmProjects/Video-Analyzer/src/data_preparator/ac/nicky/net_outputs/in_{i}').data.cpu().numpy()
-        visualize_features(M, f'ac/res/in_{i}')
+    print(1)
 
     # play_skeleton('C:/Users/TalBarami/PycharmProjects/Video-Analyzer/src/data_preparator/ac/nicky/nicky.json', 'post-processed')
 

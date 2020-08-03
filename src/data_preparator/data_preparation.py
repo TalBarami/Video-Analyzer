@@ -25,20 +25,20 @@ class DataCollector:
 
         return data
 
-    def download(self, video_url, path):
-        ydl_opts = {
-            'outtmpl': f'{path}/raw/%(id)s.%(ext)s',
-            'source_addreacs': '0.0.0.0',
-            'format': 'mp4'
-        }
-        try:
-            with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-                ydl.download([video_url])
-        except Exception as e:
-            print(f'Error: {e}')
-
-    def cut(self, video_name, time, path):
-        ffmpeg_extract_subclip(join(f'{path}/raw', f'{video_name}.mp4'), time[0], time[1], targetname=os.path.join(f'{path}/cut', f'{video_name}.mp4'))
+    # def download(self, video_url, path):
+    #     ydl_opts = {
+    #         'outtmpl': f'{path}/raw/%(id)s.%(ext)s',
+    #         'source_addreacs': '0.0.0.0',
+    #         'format': 'mp4'
+    #     }
+    #     try:
+    #         with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+    #             ydl.download([video_url])
+    #     except Exception as e:
+    #         print(f'Error: {e}')
+    #
+    # def cut(self, video_name, time, path):
+    #     ffmpeg_extract_subclip(join(f'{path}/raw', f'{video_name}.mp4'), time[0], time[1], targetname=os.path.join(f'{path}/cut', f'{video_name}.mp4'))
 
     def to_skeleton(self, video_name, path):
         open_pose_path = 'C:/Research/openpose-1.5.1-binaries-win64-gpu-python-flir-3d_recommended/openpose'

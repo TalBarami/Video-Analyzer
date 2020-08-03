@@ -13,8 +13,8 @@ class DataHandler:
         self.df = None
         self.idx = 0
         self.movements = ['Hand flapping', 'Tapping', 'Fingers', 'Clapping', 'Body rocking', 'Other']
-        self.colors = ['Red', 'Green', 'Blue', 'Yellow', 'Purple', 'Cyan', 'Gray', 'Brown']
-        self.color_items = ['None', 'Unidentified'] + self.colors
+        # self.colors = ['Red', 'Green', 'Blue', 'Yellow', 'Purple', 'Cyan', 'Gray', 'Brown']
+        # self.color_items = ['None', 'Unidentified'] + self.colors
 
         self.load()
 
@@ -31,21 +31,20 @@ class DataHandler:
         end = float(end)
         if start >= end:
             raise ValueError(f'Start time ({start}) is larger or equals to end time ({end}).')
-        if all(c == 'None' for (v, c) in videos):
-            raise ValueError(f'Select at least one child color.')
+        # if all(c == 'None' for (v, c) in videos):
+        #     raise ValueError(f'Select at least one child color.')
 
-        for (v, c) in videos:
-            print(v, c)
-            if c and c != 'None':
-                self.df.loc[self.idx] = [v.video_name, c, float(start), float(end), v.time_to_frame(start), v.time_to_frame(end), movement]
-                self.idx += 1
-        added = [f'{v.video_name}: {c}' for v, c in videos if c != 'None']
+        for v in videos:
+            # if c and c != 'None':
+            self.df.loc[self.idx] = [v.video_name, float(start), float(end), v.time_to_frame(start), v.time_to_frame(end), movement]
+            self.idx += 1
+        added = [v.video_name for v in videos]
 
         return '\n'.join(added)
 
     def load(self):
         self.df = pd.read_csv(self.csv_path) if os.path.isfile(self.csv_path) else pd.DataFrame(
-            columns=['video', 'color', 'start_time', 'end_time', 'stat_frame', 'end_frame', 'movement'])
+            columns=['video', 'start_time', 'end_time', 'stat_frame', 'end_frame', 'movement'])
         self.df.dropna(inplace=True)
         self.idx = self.df.shape[0]
 

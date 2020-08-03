@@ -5,12 +5,11 @@ import cv2
 
 
 class VideoPlayer:
-    def __init__(self, video_path, video_sync, update_function, color_function, destroy_function):
+    def __init__(self, video_path, video_sync, update_function, destroy_function):
         self.video_path = video_path
         self.video_name = os.path.basename(video_path).split('.')[0]
         self.video_sync = video_sync
         self.update_function = update_function
-        self.color_function = color_function
         self.destroy_function = destroy_function
 
         self.lock = threading.Lock()
@@ -24,9 +23,6 @@ class VideoPlayer:
         self.duration = self.frames_count / self.fps
         print(f'Playing {self.video_path} on {self.fps} fps (actual: {self.cap.get(cv2.CAP_PROP_FPS)} fps), total {self.frames_count} frames, duration {self.duration}')
 
-    def color(self):
-        return self.color_function()
-
     def destroy(self):
         if self.cap and self.cap.isOpened():
             self.cap.release()
@@ -34,7 +30,7 @@ class VideoPlayer:
 
     def next(self):
         ret, frame = False, 0
-        for i in range(self.video_sync.play_speed):
+        for i in range(self.video_sync.frame_skip):
             ret, frame = self.read_frame()
         if ret:
             self.update_function(frame, self.cap.get(cv2.CAP_PROP_POS_FRAMES), self.cap.get(cv2.CAP_PROP_POS_MSEC), self.duration)

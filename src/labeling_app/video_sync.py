@@ -3,6 +3,7 @@ from concurrent.futures import ThreadPoolExecutor
 from threading import Lock
 from time import sleep
 from time import time as timer
+import numpy as np
 
 
 class VideoSync:
@@ -15,6 +16,7 @@ class VideoSync:
         self.with_skeleton = None
         self.with_image = None
         self.play_speed = 1
+        self.frame_skip = 1
         self.stream_thread = None
         self.executor = None
         self.running_tasks = []
@@ -41,15 +43,15 @@ class VideoSync:
     def stream(self):
         vids = self.videos()
         fps = 60
-        delay = 1/fps
+        delay = 1 / fps
 
         while True:
             start = timer()
             while not self.is_playing:
                 sleep(0.01)
 
-            while (timer() - start) < delay:
-                sleep(0.0001)
+            while (timer() - start) < (delay / self.play_speed):
+                sleep(0.00001)
 
             if not self.stop_thread:
                 self.running_tasks = [self.executor.submit(task) for task in [v.next for v in vids]]
@@ -66,4 +68,5 @@ class VideoSync:
             self.lock.release()
 
     def set_speed(self, speed):
-        self.play_speed = speed
+        self.play_speed = int(np.power(speed, 2))
+        self.frame_skip = max(1, speed)
