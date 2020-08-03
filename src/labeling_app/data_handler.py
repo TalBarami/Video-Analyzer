@@ -12,7 +12,8 @@ class DataHandler:
 
         self.df = None
         self.idx = 0
-        self.movements = ['Hand flapping', 'Tapping', 'Fingers', 'Clapping', 'Body rocking', 'Other']
+        self.movements = ['Hand flapping', 'Tapping', 'Fingers', 'Clapping', 'Body rocking', 'Other', 'Toe walking', 'Spinning in circle', 'Back and forth', 'Head movement', 'Tremor']
+        self.movements.sort()
         # self.colors = ['Red', 'Green', 'Blue', 'Yellow', 'Purple', 'Cyan', 'Gray', 'Brown']
         # self.color_items = ['None', 'Unidentified'] + self.colors
 

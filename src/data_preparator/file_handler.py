@@ -1,32 +1,89 @@
 import os
 import shlex
-from distutils.dir_util import copy_tree
+import pandas as pd
 from os import path
 from subprocess import check_call
-
+from pathlib import Path
+from shutil import copyfile
 
 def encrypt(x):
-    return x * 3 - 2015
+    return str(int(x) * 3 - 2015)
 
 
 def decrypt(y):
-    (y + 2015) / 3
+    return str((int(y) + 2015) / 3)
 
 
 def find_and_copy(ids, src, dst):
+    df = pd.DataFrame(columns=['id', 'done' 'comments'])
+    idx = 0
     for cid in ids:
+        encrypted_cid = encrypt(cid[:8])
         for root, dirs, files in os.walk(src):
             found = [path.join(root, d) for d in dirs if (cid[:8] in d)]
             if any(found):
-                for f in found:
-                    idx = 0
-                    dirname = f'{cid}_{path.basename(root)}'
+                for d in found:
+                    dirname = f'{encrypted_cid}'
                     dst_path = path.join(dst, dirname)
-                    while os.path.exists(f'{dst_path}_{idx}'):
-                        idx += 1
-                    dst_path = f'{dst_path}_{idx}'
-                    print(f'copy from \"{f}\" to \"{dst_path}\"')
-                    # copy_tree(f, path.join(dst, dirname))
+                    print(f'copy from \"{d}\" to \"{dst_path}\"')
+
+                    first_time = True
+                    for file in os.listdir(d):
+                        parts = [str(x) for x in file.split('_')]
+                        parts[0] = encrypted_cid
+
+                        if len(parts) < 4:
+                            i = 0
+                            while first_time and path.isdir(path.join(dst_path, str(i))):
+                                i += 1
+                            dst_dir = str(i)
+                        else:
+                            dst_dir = f'{parts[-3]}_{parts[1]}'
+                        if first_time:
+                            df = df.append([f'{encrypted_cid}_{dst_dir}', '-', '-'])
+                            idx += 1
+                            first_time = False
+                        dst_file = path.join(dst_path, dst_dir, '_'.join(parts))
+                        print(f'cp {path.join(d, file)} -> {path.join(dst_path,dst_dir)}')
+                        Path(path.join(dst_path, dst_dir)).mkdir(parents=True, exist_ok=True)
+                        if path.isfile(dst_file):
+                            print(f'Error: overriding {dst_file}')
+                        copyfile(path.join(d, file), dst_file)
+        if idx > 20:
+            break
+
+    df.to_csv('D:/TalBarami/sample/users.csv', index=False)
+# def find_and_copy(ids, src, dst):
+#     df = pd.DataFrame(columns=['id', 'done' 'comments'])
+#     idx = 0
+#     for cid in ids:
+#         encrypted_cid = encrypt(cid[:8])
+#         for root, dirs, files in os.walk(src):
+#             found = [path.join(root, d) for d in dirs if (cid[:8] in d)]
+#             if any(found):
+#                 for d in found:
+#                     dirname = f'{encrypted_cid}'
+#                     dst_path = path.join(dst, dirname)
+#                     print(f'copy from \"{d}\" to \"{dst_path}\"')
+#
+#                     for file in os.listdir(d):
+#                         parts = [str(x) for x in file.split('_')]
+#                         parts[0] = encrypted_cid
+#                         dst_dir = path.join(dst_path, f'{parts[-3]}_{parts[1]}') if len(parts) == 4 else dst_path
+#                         if dst_dir != dst_path and (not path.isdir(dst_dir)):
+#                             print(f'{encrypted_cid}_{parts[-3]}_{parts[1]}')
+#                             df.loc[idx] = [f'{encrypted_cid}_{parts[-3]}_{parts[1]}', '', '']
+#                             idx += 1
+#                         dst_file = path.join(dst_dir, '_'.join(parts))
+#                         print(f'cp {path.join(d, file)} -> {dst_dir}')
+#                         Path(dst_dir).mkdir(parents=True, exist_ok=True)
+#                         if path.isfile(dst_file):
+#                             print(f'Error: overriding {dst_file}')
+#                         copyfile(path.join(d, file), dst_file)
+#         if idx > 20:
+#             break
+#
+#     df.to_csv('users.csv', index=False)
 
 
 def to_skeleton(src, dst):
@@ -53,8 +110,11 @@ def convert_videos(vids, skeletons):
 
 
 if __name__ == '__main__':
-    print('222109175'[:8])
-    find_and_copy(['222109175'], 'Z:/NetBakData/ADOS weekly backups/NetBakData/User@CAMERACOMP/Disk C/RecordingsBackUp', 'D:/TalBarami/sample')
+    df = pd.read_excel('D:/TalBarami/sample/Tal_27_07_2020.xlsx')
+    df = df[df['patient_id'] > 0]
+    ids = df['patient_id'].unique().astype(str)
+    find_and_copy(ids, 'Z:/NetBakData/ADOS weekly backups/NetBakData/User@CAMERACOMP/Disk C/RecordingsBackUp', 'D:/TalBarami/sample')
+    # find_and_copy(['222109175'], 'Z:/NetBakData/ADOS weekly backups/NetBakData/User@CAMERACOMP/Disk C/RecordingsBackUp', 'D:/TalBarami/sample')
     # with open('D:/TalBarami/openpose/research/ids.txt') as f:
     #     ids = f.read().splitlines()
     # src = 'E:/ADOS_Video_New_System'

@@ -155,8 +155,13 @@ class Display:
             self.video_sync.is_playing = not self.video_sync.is_playing
             self.set_play_button_name()
 
-        Button(panel, name='playButton', text='Play', state=DISABLED, command=play_button_click) \
-            .pack(side=BOTTOM, expand=1, pady=10)
+        def exit_focus_and_play_click(event):
+            if self.root.nametowidget('mediaPanel.playButton')['state'] == NORMAL:
+                self.root.focus()
+                play_button_click()
+
+        Button(panel, name='playButton', text='Play', state=DISABLED, command=play_button_click).pack(side=BOTTOM, expand=1, pady=10)
+        self.root.bind("<space>", exit_focus_and_play_click)
 
         panel.pack(side=TOP, fill=BOTH, expand=1, pady=10)
 
@@ -206,6 +211,7 @@ class Display:
     def init_management_frame(self, panel):
         manageFrame = Frame(panel, name='manageFrame')
         self.init_buttons_manager(manageFrame)
+        Frame(manageFrame).pack(padx=15)
         self.init_video_manager(manageFrame)
         Frame(manageFrame).pack(padx=15)
         Frame(panel).pack(pady=10)
