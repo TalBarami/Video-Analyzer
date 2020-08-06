@@ -4,6 +4,7 @@ from time import sleep
 from tkinter import *
 from tkinter import ttk, messagebox
 from tkinter.filedialog import askopenfilenames
+import time
 
 import PIL.Image
 import PIL.ImageTk
@@ -27,6 +28,9 @@ class Display:
         self.data_handler = DataHandler()
         self.root = Tk()
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+        self.root.title('Annotations')
+        self.root.iconbitmap('resources/annotations.ico')
+        self.video_seek_last_click = None
 
     def run(self):
         self.init_file_browser()
@@ -102,6 +106,12 @@ class Display:
 
         time_var = DoubleVar()
         Label(data_frame, textvariable=time_var, width=10).pack(side=TOP)
+
+        Label(data_frame, text=video_name, width=30).pack(side=TOP)
+
+        label_var = StringVar()
+        Label(data_frame, textvariable=label_var, width=30).pack(side=TOP)
+
         data_frame.pack(side=LEFT, fill=BOTH, expand=1)
 
         def update_function(frame, frame_number, current_time, duration):
@@ -127,9 +137,10 @@ class Display:
             duration = np.round(duration, 1)
             time_var.set(f'{time}/{duration}\n{frame_number}')
 
-            recorded = self.data_handler.intersect(video_name, time)
+            label_recorded = self.data_handler.intersect(video_name, time)
+            main_frame.config(highlightbackground=('red' if label_recorded else 'white'), highlightthickness=5)
+            label_var.set(label_recorded if label_recorded else '')
 
-            main_frame.config(highlightbackground=('red' if recorded else 'white'), highlightthickness=5)
             size = (360, 360)
             frame = cv2.cvtColor(cv2.resize(frame, size), cv2.COLOR_RGB2BGR)
             frame_image = PIL.ImageTk.PhotoImage(image=PIL.Image.fromarray(frame))
@@ -155,13 +166,20 @@ class Display:
             self.video_sync.is_playing = not self.video_sync.is_playing
             self.set_play_button_name()
 
-        def exit_focus_and_play_click(event):
-            if self.root.nametowidget('mediaPanel.playButton')['state'] == NORMAL:
+        def click(event):
+            if event.keycode == 32 and self.root.nametowidget('mediaPanel.playButton')['state'] == NORMAL:
                 self.root.focus()
                 play_button_click()
 
+            if event.keycode == 39:  # ->
+                self.root.focus()
+                self.add3_button_click()
+            if event.keycode == 37:  # <-
+                self.root.focus()
+                self.sub3_button_click()
+
         Button(panel, name='playButton', text='Play', state=DISABLED, command=play_button_click).pack(side=BOTTOM, expand=1, pady=10)
-        self.root.bind("<space>", exit_focus_and_play_click)
+        self.root.bind("<KeyPress>", click)
 
         panel.pack(side=TOP, fill=BOTH, expand=1, pady=10)
 
@@ -247,6 +265,18 @@ class Display:
 
         buttonsFrame.pack(side=LEFT, fill=BOTH, expand=1)
 
+    def video_seek(self, seek):
+        curr_time = time.time()
+        if self.video_sync.is_playing and self.video_seek_last_click and curr_time - self.video_seek_last_click > 0.2:
+            [seek(v) for v in self.videos]
+        self.video_seek_last_click = curr_time
+
+    def add3_button_click(self):
+        self.video_seek(lambda v: v.add_time(3))
+
+    def sub3_button_click(self):
+        self.video_seek(lambda v: v.add_time(-3))
+
     def init_video_manager(self, frame):
         videoFrame = Frame(frame, name='videoFrame')
 
@@ -258,10 +288,10 @@ class Display:
         e = Entry(seekFrame, name='seekEntry')
         e.pack(side=TOP, fill=X, ipadx=70, expand=0)
         seekButtonsFrame = Frame(seekFrame, name='seekButtonsFrame')
-        Button(seekButtonsFrame, name='setButton', text='Set Time', command=lambda: [v.seek_time(e.get()) for v in self.videos]).pack(side=LEFT, expand=1)
-        Button(seekButtonsFrame, name='addButton', text='Add Time', command=lambda: [v.add_time(e.get()) for v in self.videos]).pack(side=LEFT, expand=1)
-        Button(seekButtonsFrame, name='add3Button', text='Add 3', command=lambda: [v.add_time(3) for v in self.videos]).pack(side=LEFT, expand=1)
-        Button(seekButtonsFrame, name='sub3Button', text='Sub 3', command=lambda: [v.add_time(-3) for v in self.videos]).pack(side=RIGHT, expand=1)
+        Button(seekButtonsFrame, name='setButton', text='Set Time', command=lambda: self.video_seek(lambda v: v.seek_time(e.get()))).pack(side=LEFT, expand=1)
+        Button(seekButtonsFrame, name='addButton', text='Add Time', command=lambda: self.video_seek(lambda v: v.add_time(e.get()))).pack(side=LEFT, expand=1)
+        Button(seekButtonsFrame, name='sub3Button', text='-3 seconds', command=self.sub3_button_click).pack(side=LEFT, expand=1)
+        Button(seekButtonsFrame, name='add3Button', text='+3 seconds', command=self.add3_button_click).pack(side=RIGHT, expand=1)
         seekButtonsFrame.pack(side=BOTTOM, fill=BOTH, expand=1)
         seekFrame.pack(side=LEFT, fill=X, expand=1, padx=10)
         Frame(videoFrame).pack(padx=10)

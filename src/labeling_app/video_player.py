@@ -1,6 +1,6 @@
 import os
 import threading
-
+import numpy as np
 import cv2
 
 
@@ -17,7 +17,7 @@ class VideoPlayer:
         if not self.cap.isOpened():
             raise ValueError("Unable to open video source", self.video_path)
 
-        self.fps = self.cap.get(cv2.CAP_PROP_FPS)
+        self.fps = int(self.cap.get(cv2.CAP_PROP_FPS))
 
         self.frames_count = self.cap.get(cv2.CAP_PROP_FRAME_COUNT)
         self.duration = self.frames_count / self.fps
@@ -63,14 +63,16 @@ class VideoPlayer:
         self.lock.release()
 
     def seek_time(self, time, delta=0):
+        time = np.clip(float(delta) + float(time), 0.0, self.duration)
+
         self.lock.acquire()
         try:
-            time = float(time)
-            self.cap.set(cv2.CAP_PROP_POS_MSEC, delta + time * 1000)
+            # self.cap.set(cv2.CAP_PROP_POS_FRAMES, time * self.fps)
+            self.cap.set(cv2.CAP_PROP_POS_MSEC, int(time * 1000))
             print(f'video {self.video_name} is jumping to time: {time}, frame {self.cap.get(cv2.CAP_PROP_POS_FRAMES)}')
         except ValueError as v:
             print(f'Error: {v}')
         self.lock.release()
 
     def add_time(self, time):
-        self.seek_time(time, delta=self.cap.get(cv2.CAP_PROP_POS_MSEC))
+        self.seek_time(time, delta=self.cap.get(cv2.CAP_PROP_POS_MSEC) / 1000)

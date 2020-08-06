@@ -12,8 +12,9 @@ class DataHandler:
 
         self.df = None
         self.idx = 0
-        self.movements = ['Hand flapping', 'Tapping', 'Fingers', 'Clapping', 'Body rocking', 'Other', 'Toe walking', 'Spinning in circle', 'Back and forth', 'Head movement', 'Tremor']
+        self.movements = ['Hand flapping', 'Tapping', 'Fingers', 'Clapping', 'Body rocking', 'Toe walking', 'Spinning in circle', 'Back and forth', 'Head movement', 'Tremor']
         self.movements.sort()
+        self.movements.append('Other')
         # self.colors = ['Red', 'Green', 'Blue', 'Yellow', 'Purple', 'Cyan', 'Gray', 'Brown']
         # self.color_items = ['None', 'Unidentified'] + self.colors
 
@@ -56,7 +57,8 @@ class DataHandler:
 
     def intersect(self, video, time):
         video_records = self.df[self.df['video'] == video]
-        return not video_records[(video_records['start_time'] <= time) & (video_records['end_time'] >= time)].empty
+        result = video_records[(video_records['start_time'] <= time) & (video_records['end_time'] >= time)]
+        return None if result.empty else result.iloc[0]['movement']
 
     def table_editor(self, root):
         window = tk.Toplevel(root)

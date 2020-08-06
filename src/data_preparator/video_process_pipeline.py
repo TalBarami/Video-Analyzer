@@ -187,23 +187,6 @@ def post_process(skeleton_folder, dst_folder, resolution=(340, 512)):
 
     write_json(result, join(dst_folder, f'{basename(skeleton_folder)}.json'))
 
-def get_video(url, vid, segment, dst):
-    video = YouTube(url)
-    process_dir = join(dst, 'in_process')
-    out_dir = join(dst, 'processed')
-    Path(join(process_dir)).mkdir(parents=True, exist_ok=True)
-    Path(join(out_dir)).mkdir(parents=True, exist_ok=True)
-
-    filename = f'{vid}.mp4'
-    out_path = join(out_dir, filename)
-
-    process_path = join(process_dir, filename)
-    video.streams.first().download(process_dir)
-    os.rename(join(process_dir, f'{video.title}.mp4'), join(process_dir, filename))
-
-    ffmpeg_extract_subclip(process_path, segment[0], segment[1], targetname=out_path)
-    os.remove(process_path)
-    return video
 
 def preparation_pipepline(video_name, video_path, result_path, skeleton_video=False):
     openpose = 'C:/Users/TalBarami/PycharmProjects/openpose-1.5.1-binaries-win64-gpu-python-flir-3d_recommended/openpose'
@@ -219,42 +202,6 @@ def preparation_pipepline(video_name, video_path, result_path, skeleton_video=Fa
     post_process(skeleton_path, result_path)
 
 
-def download_and_prepare_dataset(dataset_dir, dataset_name):
-    dataset_name_no_ext = splitext(dataset_name)[0]
-    out_dir = join(dataset_dir, dataset_name_no_ext)
-    Path(join(out_dir, 'upload')).mkdir(parents=True, exist_ok=True)
-
-    dataset = read_json(join(dataset_dir, dataset_name))
-    for vid, data in dataset.items():
-        try:
-            video = get_video(data['url'], vid, data['annotations']['segment'], out_dir)
-            preparation_pipepline(f'{vid}.mp4', join(out_dir, 'processed'), join(out_dir, 'ready'), False)
-            shutil.move(join(out_dir, 'ready', f'{vid}.json'), join(out_dir, 'upload', f'{vid}.json'))
-        except Exception as e:
-            print(e)
-    print('Videos preparation finished.')
-
-    with open('label_name.txt') as f:
-        all_labels = f.read().splitlines()
-    label_file = {}
-    for vid, data in dataset.items():
-        json_path = join(out_dir, 'upload', f'{vid}.json')
-        label = data['annotations']['label']
-        label_index = all_labels.index(label)
-        path_found = os.path.exists(json_path)
-        label_file[f'{vid}'] = {
-            'has_skeleton': path_found,
-            'label': label,
-            'label_index': label_index
-        }
-        if path_found:
-            j = read_json(json_path)
-            j['label'] = label
-            j['label_index'] = label_index
-            write_json(j, json_path)
-    write_json(label_file, join(out_dir, 'label.json'))
-    print('Labels preparation finished.')
-
 def kinetics_subset(src, dst, labels):
     with open(src) as f:
         dataset = json.load(f)
@@ -267,4 +214,4 @@ def kinetics_subset(src, dst, labels):
 
 
 if __name__ == '__main__':
-    print('hello')
+    print(1)
