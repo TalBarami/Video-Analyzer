@@ -29,7 +29,7 @@ class Display:
         self.root = Tk()
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
         self.root.title('Annotations')
-        self.root.iconbitmap('resources/annotations.ico')
+        # self.root.iconbitmap('resources/annotations.ico')
         self.video_seek_last_click = None
 
     def run(self):
@@ -167,16 +167,17 @@ class Display:
             self.set_play_button_name()
 
         def click(event):
-            if event.keycode == 32 and self.root.nametowidget('mediaPanel.playButton')['state'] == NORMAL:
+            if event.keycode == 32 and self.root.nametowidget('mediaPanel.playButton')['state'] == NORMAL:  # space
                 self.root.focus()
                 play_button_click()
-
+            if event.keycode == 13:  # enter
+                self.set_time_button_click()
             if event.keycode == 39:  # ->
                 self.root.focus()
-                self.add3_button_click()
+                self.add_time_button_click()
             if event.keycode == 37:  # <-
                 self.root.focus()
-                self.sub3_button_click()
+                self.sub_time_button_click()
 
         Button(panel, name='playButton', text='Play', state=DISABLED, command=play_button_click).pack(side=BOTTOM, expand=1, pady=10)
         self.root.bind("<KeyPress>", click)
@@ -267,15 +268,22 @@ class Display:
 
     def video_seek(self, seek):
         curr_time = time.time()
-        if self.video_sync.is_playing and self.video_seek_last_click and curr_time - self.video_seek_last_click > 0.2:
+        if self.video_sync.is_playing and self.video_seek_last_click and curr_time - self.video_seek_last_click > 0.3:
             [seek(v) for v in self.videos]
         self.video_seek_last_click = curr_time
 
-    def add3_button_click(self):
-        self.video_seek(lambda v: v.add_time(3))
+    def add_time_button_click(self):
+        value = self.root.nametowidget('labelingPanel.manageFrame.videoFrame.seekFrame.seekEntry').get()
+        self.video_seek(lambda v: v.add_time(int(value) if value.isdigit() else 3))
 
-    def sub3_button_click(self):
-        self.video_seek(lambda v: v.add_time(-3))
+    def sub_time_button_click(self):
+        value = self.root.nametowidget('labelingPanel.manageFrame.videoFrame.seekFrame.seekEntry').get()
+        self.video_seek(lambda v: v.add_time(-int(value) if value.isdigit() else -3))
+
+    def set_time_button_click(self):
+        value = self.root.nametowidget('labelingPanel.manageFrame.videoFrame.seekFrame.seekEntry').get()
+        if value.isdigit():
+            self.video_seek(lambda v: v.seek_time(value))
 
     def init_video_manager(self, frame):
         videoFrame = Frame(frame, name='videoFrame')
@@ -288,10 +296,8 @@ class Display:
         e = Entry(seekFrame, name='seekEntry')
         e.pack(side=TOP, fill=X, ipadx=70, expand=0)
         seekButtonsFrame = Frame(seekFrame, name='seekButtonsFrame')
-        Button(seekButtonsFrame, name='setButton', text='Set Time', command=lambda: self.video_seek(lambda v: v.seek_time(e.get()))).pack(side=LEFT, expand=1)
-        Button(seekButtonsFrame, name='addButton', text='Add Time', command=lambda: self.video_seek(lambda v: v.add_time(e.get()))).pack(side=LEFT, expand=1)
-        Button(seekButtonsFrame, name='sub3Button', text='-3 seconds', command=self.sub3_button_click).pack(side=LEFT, expand=1)
-        Button(seekButtonsFrame, name='add3Button', text='+3 seconds', command=self.add3_button_click).pack(side=RIGHT, expand=1)
+        Button(seekButtonsFrame, name='setButton', text='Set Time', command=self.set_time_button_click).pack(side=LEFT, expand=1)
+        Button(seekButtonsFrame, name='addButton', text='Add Time', command=self.add_time_button_click).pack(side=LEFT, expand=1)
         seekButtonsFrame.pack(side=BOTTOM, fill=BOTH, expand=1)
         seekFrame.pack(side=LEFT, fill=X, expand=1, padx=10)
         Frame(videoFrame).pack(padx=10)
