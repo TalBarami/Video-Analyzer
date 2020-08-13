@@ -38,11 +38,11 @@ def find_and_copy(ids, src, dst):
                             dst_dir = f'{parts[-3]}_{parts[-4]}'
 
                         if path.isdir(path.join(dst_path, dst_dir)):
-                            print(f'Error: duplicate records for {dst_dir}')
+                            print(f'Error: duplicate recording directories for: {path.join(dst_path, dst_dir)}')
                             continue
                         dst_file = path.join(dst_path, dst_dir, '_'.join(parts))
                         if path.isfile(dst_file):
-                            print(f'Error: file already exists {dst_file}')
+                            print(f'Error: file already exists: {dst_file}')
                             continue
                         print(f'cp {path.join(d, file)} -> {path.join(dst_path,dst_dir, dst_file)}')
                         Path(path.join(dst_path, dst_dir)).mkdir(parents=True, exist_ok=True)
