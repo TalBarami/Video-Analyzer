@@ -49,37 +49,6 @@ def find_and_copy(ids, src, dst):
                         copyfile(path.join(d, file), dst_file)
 
     df.to_csv('D:/TalBarami/sample/users.csv', index=False)
-# def find_and_copy(ids, src, dst):
-#     df = pd.DataFrame(columns=['id', 'done' 'comments'])
-#     idx = 0
-#     for cid in ids:
-#         encrypted_cid = encrypt(cid[:8])
-#         for root, dirs, files in os.walk(src):
-#             found = [path.join(root, d) for d in dirs if (cid[:8] in d)]
-#             if any(found):
-#                 for d in found:
-#                     dirname = f'{encrypted_cid}'
-#                     dst_path = path.join(dst, dirname)
-#                     print(f'copy from \"{d}\" to \"{dst_path}\"')
-#
-#                     for file in os.listdir(d):
-#                         parts = [str(x) for x in file.split('_')]
-#                         parts[0] = encrypted_cid
-#                         dst_dir = path.join(dst_path, f'{parts[-3]}_{parts[1]}') if len(parts) == 4 else dst_path
-#                         if dst_dir != dst_path and (not path.isdir(dst_dir)):
-#                             print(f'{encrypted_cid}_{parts[-3]}_{parts[1]}')
-#                             df.loc[idx] = [f'{encrypted_cid}_{parts[-3]}_{parts[1]}', '', '']
-#                             idx += 1
-#                         dst_file = path.join(dst_dir, '_'.join(parts))
-#                         print(f'cp {path.join(d, file)} -> {dst_dir}')
-#                         Path(dst_dir).mkdir(parents=True, exist_ok=True)
-#                         if path.isfile(dst_file):
-#                             print(f'Error: overriding {dst_file}')
-#                         copyfile(path.join(d, file), dst_file)
-#         if idx > 20:
-#             break
-#
-#     df.to_csv('users.csv', index=False)
 
 
 def to_skeleton(src, dst):
