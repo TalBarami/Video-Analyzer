@@ -141,8 +141,11 @@ class Display:
             main_frame.config(highlightbackground=('red' if label_recorded else 'white'), highlightthickness=5)
             label_var.set(label_recorded if label_recorded else '')
 
-            size = (360, 360)
-            frame = cv2.cvtColor(cv2.resize(frame, size), cv2.COLOR_RGB2BGR)
+
+            frame_width = 400
+            frame_height = int((float(frame.shape[0]) * float(frame_width / float(frame.shape[1]))))
+
+            frame = cv2.cvtColor(cv2.resize(frame, (frame_width, frame_height)), cv2.COLOR_RGB2BGR)
             frame_image = PIL.ImageTk.PhotoImage(image=PIL.Image.fromarray(frame))
             video_label.config(image=frame_image)
             video_label.image = frame_image
