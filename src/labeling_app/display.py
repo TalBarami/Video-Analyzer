@@ -84,6 +84,12 @@ class Display:
         main_frame = Frame(videos_frame, name=f'video_{idx}', highlightthickness=2)
         main_frame.pack(side=LEFT, fill=BOTH, expand=1)
 
+        header_frame = Frame(main_frame)
+        name_label = Label(header_frame, text=video_name, width=30)
+        name_label.pack(side=TOP)
+
+        header_frame.pack(side=TOP)
+
         video_label = Label(main_frame, name='label')
         video_label.pack(side=TOP, fill=BOTH, expand=1)
 
@@ -106,8 +112,6 @@ class Display:
 
         time_var = DoubleVar()
         Label(data_frame, textvariable=time_var, width=10).pack(side=TOP)
-
-        Label(data_frame, text=video_name, width=30).pack(side=TOP)
 
         label_var = StringVar()
         Label(data_frame, textvariable=label_var, width=30).pack(side=TOP)
@@ -136,6 +140,9 @@ class Display:
             time = np.round(current_time / 1000, 1)
             duration = np.round(duration, 1)
             time_var.set(f'{time}/{duration}\n{frame_number}')
+
+            previously_recorded = self.data_handler.any(video_name)
+            name_label.config(fg='Red' if previously_recorded else None)
 
             label_recorded = self.data_handler.intersect(video_name, time)
             main_frame.config(highlightbackground=('red' if label_recorded else 'white'), highlightthickness=5)
