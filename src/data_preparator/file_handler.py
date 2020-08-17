@@ -1,6 +1,7 @@
 import os
 import shlex
 import pandas as pd
+import numpy as np
 from os import path
 from subprocess import check_call
 from pathlib import Path
@@ -38,8 +39,7 @@ def find_and_copy(ids, src, dst):
                             dst_dir = f'{parts[-3]}_{parts[-4]}'
 
                         if path.isdir(path.join(dst_path, dst_dir)):
-                            print(f'Error: duplicate recording directories for: {path.join(dst_path, dst_dir)}')
-                            continue
+                            print(f'Directory exists: {path.join(dst_path, dst_dir)}')
                         dst_file = path.join(dst_path, dst_dir, '_'.join(parts))
                         if path.isfile(dst_file):
                             print(f'Error: file already exists: {dst_file}')
@@ -81,7 +81,11 @@ if __name__ == '__main__':
     for id in ids:
         print(id)
 
-    find_and_copy(ids, 'Z:/NetBakData/ADOS weekly backups/NetBakData/User@CAMERACOMP/Disk C/RecordingsBackUp', 'Z:/Tal_Barami_Temporary')
+    ids = ids[np.where(ids == '338678907')[0][0]:]
+    for id in ids[np.where(ids == '338678907')[0][0]:]:
+        print(id)
+
+    # find_and_copy(ids, 'Z:/NetBakData/ADOS weekly backups/NetBakData/User@CAMERACOMP/Disk C/RecordingsBackUp', 'Z:/Tal_Barami_Temporary')
 
     # find_and_copy(, 'Z:/NetBakData/ADOS weekly backups/NetBakData/User@CAMERACOMP/Disk C/RecordingsBackUp', 'D:/TalBarami/sample')
     # find_and_copy(['222109175'], 'Z:/NetBakData/ADOS weekly backups/NetBakData/User@CAMERACOMP/Disk C/RecordingsBackUp', 'D:/TalBarami/sample')
