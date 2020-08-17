@@ -78,11 +78,9 @@ if __name__ == '__main__':
     df = pd.read_excel('D:/TalBarami/Tal_27_07_2020.xlsx')
     df = df[df['patient_id'] > 0]
     ids = df['patient_id'].unique().astype(str)
-    for id in ids:
-        print(id)
 
-    ids = ids[np.where(ids == '338678907')[0][0]:]
-    for id in ids[np.where(ids == '338678907')[0][0]:]:
+    ids = ids[np.where(ids == '338678907')[0][0]:] # resume after failure
+    for id in ids:
         print(id)
 
     # find_and_copy(ids, 'Z:/NetBakData/ADOS weekly backups/NetBakData/User@CAMERACOMP/Disk C/RecordingsBackUp', 'Z:/Tal_Barami_Temporary')
