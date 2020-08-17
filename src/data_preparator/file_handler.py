@@ -79,11 +79,11 @@ if __name__ == '__main__':
     df = df[df['patient_id'] > 0]
     ids = df['patient_id'].unique().astype(str)
 
-    ids = ids[np.where(ids == '338678907')[0][0]:] # resume after failure
+    ids = ids[np.where(ids == '338678907')[0][0]:]  # resume after failure
     for id in ids:
         print(id)
 
-    # find_and_copy(ids, 'Z:/NetBakData/ADOS weekly backups/NetBakData/User@CAMERACOMP/Disk C/RecordingsBackUp', 'Z:/Tal_Barami_Temporary')
+    find_and_copy(ids, 'Z:/NetBakData/ADOS weekly backups/NetBakData/User@CAMERACOMP/Disk C/RecordingsBackUp', 'Z:/Tal_Barami_Temporary')
 
     # find_and_copy(, 'Z:/NetBakData/ADOS weekly backups/NetBakData/User@CAMERACOMP/Disk C/RecordingsBackUp', 'D:/TalBarami/sample')
     # find_and_copy(['222109175'], 'Z:/NetBakData/ADOS weekly backups/NetBakData/User@CAMERACOMP/Disk C/RecordingsBackUp', 'D:/TalBarami/sample')

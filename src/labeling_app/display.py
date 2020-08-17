@@ -148,7 +148,7 @@ class Display:
             main_frame.config(highlightbackground=('red' if label_recorded else 'white'), highlightthickness=5)
             label_var.set(label_recorded if label_recorded else '')
 
-            frame_width = 400
+            frame_width = 450
             frame_height = int((float(frame.shape[0]) * float(frame_width / float(frame.shape[1]))))
 
             frame = cv2.cvtColor(cv2.resize(frame, (frame_width, frame_height)), cv2.COLOR_RGB2BGR)
