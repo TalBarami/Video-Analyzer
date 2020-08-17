@@ -84,6 +84,12 @@ class Display:
         main_frame = Frame(videos_frame, name=f'video_{idx}', highlightthickness=2)
         main_frame.pack(side=LEFT, fill=BOTH, expand=1)
 
+        header_frame = Frame(main_frame)
+        name_label = Label(header_frame, text=video_name, width=30)
+        name_label.pack(side=TOP)
+
+        header_frame.pack(side=TOP)
+
         video_label = Label(main_frame, name='label')
         video_label.pack(side=TOP, fill=BOTH, expand=1)
 
@@ -106,8 +112,6 @@ class Display:
 
         time_var = DoubleVar()
         Label(data_frame, textvariable=time_var, width=10).pack(side=TOP)
-
-        Label(data_frame, text=video_name, width=30).pack(side=TOP)
 
         label_var = StringVar()
         Label(data_frame, textvariable=label_var, width=30).pack(side=TOP)
@@ -137,12 +141,17 @@ class Display:
             duration = np.round(duration, 1)
             time_var.set(f'{time}/{duration}\n{frame_number}')
 
+            previously_recorded = self.data_handler.any(video_name)
+            name_label.config(fg='Red' if previously_recorded else None)
+
             label_recorded = self.data_handler.intersect(video_name, time)
             main_frame.config(highlightbackground=('red' if label_recorded else 'white'), highlightthickness=5)
             label_var.set(label_recorded if label_recorded else '')
 
-            size = (360, 360)
-            frame = cv2.cvtColor(cv2.resize(frame, size), cv2.COLOR_RGB2BGR)
+            frame_width = 400
+            frame_height = int((float(frame.shape[0]) * float(frame_width / float(frame.shape[1]))))
+
+            frame = cv2.cvtColor(cv2.resize(frame, (frame_width, frame_height)), cv2.COLOR_RGB2BGR)
             frame_image = PIL.ImageTk.PhotoImage(image=PIL.Image.fromarray(frame))
             video_label.config(image=frame_image)
             video_label.image = frame_image

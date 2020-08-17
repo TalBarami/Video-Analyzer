@@ -76,3 +76,6 @@ class DataHandler:
             window.destroy()
 
         window.protocol("WM_DELETE_WINDOW", on_closing)
+
+    def any(self, video_name):
+        return not self.df[self.df['video'] == video_name].empty
