@@ -4,8 +4,9 @@ from time import sleep
 from tkinter import *
 from tkinter import ttk, messagebox
 from tkinter.filedialog import askopenfilenames
-import time
+from tendo import singleton
 
+import time
 import PIL.Image
 import PIL.ImageTk
 import cv2
@@ -336,6 +337,7 @@ class Display:
 
 
 if __name__ == '__main__':
+    me = singleton.SingleInstance()
     d = Display()
     d.run()
 

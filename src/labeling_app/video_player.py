@@ -4,6 +4,7 @@ import numpy as np
 import cv2
 import imutils
 
+
 class VideoPlayer:
     def __init__(self, video_path, video_sync, video_checked, update_function, destroy_function):
         self.video_path = video_path
