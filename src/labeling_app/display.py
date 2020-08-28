@@ -116,6 +116,9 @@ class Display:
         label_var = StringVar()
         Label(data_frame, textvariable=label_var, width=30).pack(side=TOP)
 
+        include_video = IntVar(value=1)
+        Checkbutton(data_frame, text='Include Video', variable=include_video).pack(side=TOP)
+
         data_frame.pack(side=LEFT, fill=BOTH, expand=1)
 
         def update_function(frame, frame_number, current_time, duration):
@@ -148,10 +151,6 @@ class Display:
             main_frame.config(highlightbackground=('red' if label_recorded else 'white'), highlightthickness=5)
             label_var.set(label_recorded if label_recorded else '')
 
-            frame_width = 400
-            frame_height = int((float(frame.shape[0]) * float(frame_width / float(frame.shape[1]))))
-
-            frame = cv2.cvtColor(cv2.resize(frame, (frame_width, frame_height)), cv2.COLOR_RGB2BGR)
             frame_image = PIL.ImageTk.PhotoImage(image=PIL.Image.fromarray(frame))
             video_label.config(image=frame_image)
             video_label.image = frame_image
@@ -160,8 +159,8 @@ class Display:
             main_frame.destroy()
 
         return VideoPlayer(video_path, self.video_sync,
+                           video_checked=lambda: include_video.get(),
                            update_function=update_function,
-                           # color_function=lambda: color_combobox.get(),
                            destroy_function=destroy_function)
 
     def set_play_button_name(self, value=None):
@@ -252,7 +251,7 @@ class Display:
                 start = self.root.nametowidget('labelingPanel.startFrame.startEntry').get()
                 end = self.root.nametowidget('labelingPanel.endFrame.endEntry').get()
                 movement = self.root.nametowidget('labelingPanel.movementFrame.movementCombobox').get()
-                added = self.data_handler.append(self.videos, start, end, movement)
+                added = self.data_handler.add(self.videos, start, end, movement)
                 messagebox.showinfo('Added', f'The following videos were added with start={start}, end={end}, movement={movement}:\n{added}')
             except ValueError as v:
                 messagebox.showerror('Error', v)

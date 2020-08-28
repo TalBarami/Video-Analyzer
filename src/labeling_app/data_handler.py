@@ -20,7 +20,7 @@ class DataHandler:
 
         self.load()
 
-    def append(self, videos, start, end, movement):
+    def add(self, videos, start, end, movement):
         if len(videos) < 1:
             raise ValueError('No videos were selected.')
 
@@ -37,9 +37,9 @@ class DataHandler:
         #     raise ValueError(f'Select at least one child color.')
 
         for v in videos:
-            # if c and c != 'None':
-            self.df.loc[self.idx] = [v.video_name, float(start), float(end), v.time_to_frame(start), v.time_to_frame(end), movement]
-            self.idx += 1
+            if v.video_checked():
+                self.df.loc[self.idx] = [v.video_name, float(start), float(end), v.time_to_frame(start), v.time_to_frame(end), movement]
+                self.idx += 1
         added = [v.video_name for v in videos]
 
         return '\n'.join(added)

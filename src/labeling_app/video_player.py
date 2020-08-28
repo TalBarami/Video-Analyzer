@@ -2,13 +2,14 @@ import os
 import threading
 import numpy as np
 import cv2
-
+import imutils
 
 class VideoPlayer:
-    def __init__(self, video_path, video_sync, update_function, destroy_function):
+    def __init__(self, video_path, video_sync, video_checked, update_function, destroy_function):
         self.video_path = video_path
         self.video_name = os.path.basename(video_path).split('.')[0]
         self.video_sync = video_sync
+        self.video_checked = video_checked
         self.update_function = update_function
         self.destroy_function = destroy_function
 
@@ -21,7 +22,24 @@ class VideoPlayer:
 
         self.frames_count = self.cap.get(cv2.CAP_PROP_FRAME_COUNT)
         self.duration = self.frames_count / self.fps
+
+        self.width, self.height = self.calc_resolution()
+
         print(f'Playing {self.video_path} on {self.fps} fps (actual: {self.cap.get(cv2.CAP_PROP_FPS)} fps), total {self.frames_count} frames, duration {self.duration}')
+
+    def calc_resolution(self):
+        max_width = max_height = 400
+
+        width = self.cap.get(cv2.CAP_PROP_FRAME_WIDTH)
+        height = self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
+
+        width_scale_factor = width / max_width
+        height_scale_factor = height / max_height
+
+        if width > height:
+            return int(max_width), int(height / width_scale_factor)
+        else:
+            return int(width / height_scale_factor), int(max_height)
 
     def destroy(self):
         if self.cap and self.cap.isOpened():
@@ -33,6 +51,9 @@ class VideoPlayer:
         for i in range(self.video_sync.frame_skip):
             ret, frame = self.read_frame()
         if ret:
+            # cv2.resize(frame, (self.width, self.height))
+            frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+            frame = imutils.resize(frame, self.width, self.height)
             self.update_function(frame, self.cap.get(cv2.CAP_PROP_POS_FRAMES), self.cap.get(cv2.CAP_PROP_POS_MSEC), self.duration)
 
     def read_frame(self):
