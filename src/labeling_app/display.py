@@ -87,6 +87,8 @@ class Display:
         header_frame = Frame(main_frame)
         name_label = Label(header_frame, text=video_name, width=30)
         name_label.pack(side=TOP)
+        previously_recorded = self.data_handler.any(video_name)
+        name_label.config(fg='Red' if previously_recorded else None)
 
         header_frame.pack(side=TOP)
 
@@ -143,9 +145,6 @@ class Display:
             time = np.round(current_time / 1000, 1)
             duration = np.round(duration, 1)
             time_var.set(f'{time}/{duration}\n{frame_number}')
-
-            previously_recorded = self.data_handler.any(video_name)
-            name_label.config(fg='Red' if previously_recorded else None)
 
             label_recorded = self.data_handler.intersect(video_name, time)
             main_frame.config(highlightbackground=('red' if label_recorded else 'white'), highlightthickness=5)

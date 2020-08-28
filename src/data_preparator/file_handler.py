@@ -1,6 +1,7 @@
 import os
 import shlex
 import pandas as pd
+import numpy as np
 from os import path
 from subprocess import check_call
 from pathlib import Path
@@ -38,8 +39,7 @@ def find_and_copy(ids, src, dst):
                             dst_dir = f'{parts[-3]}_{parts[-4]}'
 
                         if path.isdir(path.join(dst_path, dst_dir)):
-                            print(f'Error: duplicate recording directories for: {path.join(dst_path, dst_dir)}')
-                            continue
+                            print(f'Directory exists: {path.join(dst_path, dst_dir)}')
                         dst_file = path.join(dst_path, dst_dir, '_'.join(parts))
                         if path.isfile(dst_file):
                             print(f'Error: file already exists: {dst_file}')
@@ -78,6 +78,8 @@ if __name__ == '__main__':
     df = pd.read_excel('D:/TalBarami/Tal_27_07_2020.xlsx')
     df = df[df['patient_id'] > 0]
     ids = df['patient_id'].unique().astype(str)
+
+    ids = ids[np.where(ids == '338678907')[0][0]:]  # resume after failure
     for id in ids:
         print(id)
 
