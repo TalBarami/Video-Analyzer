@@ -77,12 +77,12 @@ class DataHandler:
 
         window.protocol("WM_DELETE_WINDOW", on_closing)
 
-    def next_record(self, time):
-        df = self.df[self.df['start_time'] > time]
+    def next_record(self, videos, time):
+        df = self.df[self.df['video_name'].isin([v.video_name for v in videos]) & (self.df['start_time'] > time)]
         return df['start_time'].min() if not df.empty() else None
 
-    def prev_record(self, time):
-        df = self.df[self.df['end_time'] < time]
+    def prev_record(self, videos, time):
+        df = self.df[self.df['video_name'].isin([v.video_name for v in videos]) & (self.df['end_time'] < time)]
         return df['start_time'].max() if not df.empty() else None
 
     def any(self, video_name):
