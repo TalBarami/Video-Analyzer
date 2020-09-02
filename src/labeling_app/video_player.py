@@ -55,7 +55,7 @@ class VideoPlayer:
             # cv2.resize(frame, (self.width, self.height))
             frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
             frame = imutils.resize(frame, self.width, self.height)
-            self.update_function(frame, self.cap.get(cv2.CAP_PROP_POS_FRAMES), self.cap.get(cv2.CAP_PROP_POS_MSEC), self.duration)
+            self.update_function(frame, self.cap.get(cv2.CAP_PROP_POS_FRAMES), self.get_time_sec(), self.duration)
 
     def read_frame(self):
         if self.cap.isOpened():
@@ -71,6 +71,9 @@ class VideoPlayer:
             self.lock.release()
             return ret, frame
         return False, 0
+
+    def get_time_sec(self):
+        return self.cap.get(cv2.CAP_PROP_POS_MSEC) / 1000.0
 
     def time_to_frame(self, time):
         return int(time * self.fps)
@@ -97,4 +100,4 @@ class VideoPlayer:
         self.lock.release()
 
     def add_time(self, time):
-        self.seek_time(time, delta=self.cap.get(cv2.CAP_PROP_POS_MSEC) / 1000)
+        self.seek_time(time, delta=self.get_time_sec())

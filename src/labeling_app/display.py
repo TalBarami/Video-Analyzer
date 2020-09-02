@@ -143,7 +143,7 @@ class Display:
             #     except TclError as e:
             #         print(f'Error: {e}')
 
-            time = np.round(current_time / 1000, 1)
+            time = np.round(current_time, 1)
             duration = np.round(duration, 1)
             time_var.set(f'{time}/{duration}\n{frame_number}')
 
@@ -293,17 +293,14 @@ class Display:
         if value.isdigit():
             self.video_seek(lambda v: v.seek_time(value))
 
-    def next_record_button_click(self):
-        if self.videos:
-            current_time = 0
-            next_record_time = self.data_handler.next_record(self.videos, current_time)
-            self.video_seek(lambda v: v.seek_time(next_record_time))
+    def get_current_video_time(self):
+        return np.array([v.get_time_sec() for v in self.videos]).min()
 
-    def prev_record_button_click(self):
+    def seek_record(self, seek_function):
         if self.videos:
-            current_time = 0
-            prev_record_time = self.data_handler.prev_record(self.videos, current_time)
-            self.video_seek(lambda v: v.seek_time(prev_record_time))
+            current_time = self.get_current_video_time()
+            next_record_time = seek_function(current_time)
+            self.video_seek(lambda v: v.seek_time(next_record_time))
 
     def init_video_manager(self, frame):
         videoFrame = Frame(frame, name='videoFrame')
@@ -318,8 +315,8 @@ class Display:
         seekButtonsFrame = Frame(seekFrame, name='seekButtonsFrame')
         Button(seekButtonsFrame, name='setButton', text='Set Time', command=self.set_time_button_click).pack(side=LEFT, expand=1)
         Button(seekButtonsFrame, name='addButton', text='Add Time', command=self.add_time_button_click).pack(side=LEFT, expand=1)
-        Button(seekButtonsFrame, name='prevButton', text='Previous Record', command=self.prev_record_button_click).pack(side=LEFT, expand=1)
-        Button(seekButtonsFrame, name='nextButton', text='Next Record', command=self.next_record_button_click).pack(side=LEFT, expand=1)
+        Button(seekButtonsFrame, name='prevButton', text='Previous Record', command=lambda t: self.data_handler.prev_record(self.videos, t)).pack(side=LEFT, expand=1)
+        Button(seekButtonsFrame, name='nextButton', text='Next Record', command=lambda t: self.data_handler.next_record(self.videos, t)).pack(side=LEFT, expand=1)
         seekButtonsFrame.pack(side=BOTTOM, fill=BOTH, expand=1)
         seekFrame.pack(side=LEFT, fill=X, expand=1, padx=10)
         Frame(videoFrame).pack(padx=10)
