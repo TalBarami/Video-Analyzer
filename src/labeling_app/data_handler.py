@@ -56,8 +56,8 @@ class DataHandler:
         self.df.to_csv(self.csv_path, index=False)
 
     def intersect(self, video, time):
-        video_records = self.df[self.df['video'] == video]
-        result = video_records[(video_records['start_time'] <= time) & (video_records['end_time'] >= time)]
+        df = self.df[self.df['video'] == video]
+        result = df[(df['start_time'] <= time) & (df['end_time'] >= time)]
         return None if result.empty else result.iloc[0]['movement']
 
     def table_editor(self, root):
@@ -76,6 +76,14 @@ class DataHandler:
             window.destroy()
 
         window.protocol("WM_DELETE_WINDOW", on_closing)
+
+    def next_record(self, time):
+        df = self.df[self.df['start_time'] > time]
+        return df['start_time'].min() if not df.empty() else None
+
+    def prev_record(self, time):
+        df = self.df[self.df['end_time'] < time]
+        return df['start_time'].max() if not df.empty() else None
 
     def any(self, video_name):
         return not self.df[self.df['video'] == video_name].empty
