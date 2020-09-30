@@ -57,6 +57,7 @@ class Display:
             b = len(self.video_paths) > 0
             self.root.nametowidget('mediaPanel.playButton').config(state=NORMAL if b else DISABLED)
             self.root.nametowidget('labelingPanel.manageFrame.buttonsFrame.addButton').config(state=NORMAL if b else DISABLED)
+            self.root.nametowidget('labelingPanel.manageFrame.buttonsFrame.updateButton').config(state=NORMAL if b else DISABLED)
             self.root.nametowidget('labelingPanel.manageFrame.videoFrame.seekFrame.scaleBar').config(state=NORMAL if b else DISABLED)
 
             if b:
@@ -266,8 +267,8 @@ class Display:
         def remove_button_click():
             try:
                 current_time = self.get_current_video_time()
-                removed = '\n'.join(self.data_handler.remove(self.videos, current_time))
-                messagebox.showinfo('Removed', f'Removed records at {time} from:\n{removed}')
+                self.data_handler.remove(self.videos, current_time)
+                add_button_click()
             except ValueError as v:
                 messagebox.showerror('Error', v)
 
@@ -284,7 +285,7 @@ class Display:
         Frame(buttonsFrame).pack(pady=5)
         Button(buttonsFrame, name='addButton', text='Add Records', state=DISABLED, command=add_button_click).pack(side=TOP, expand=1)
         Frame(buttonsFrame).pack(pady=5)
-        Button(buttonsFrame, name='removeButton', text='Remove Records', state=DISABLED, command=remove_button_click).pack(side=TOP, expand=1)
+        Button(buttonsFrame, name='updateButton', text='Update Records', state=DISABLED, command=remove_button_click).pack(side=TOP, expand=1)
         Frame(buttonsFrame).pack(pady=5)
         Button(buttonsFrame, name='viewButton', text='View Data',
                command=lambda: self.data_handler.table_editor(self.root)).pack(side=TOP, expand=1)
@@ -314,10 +315,23 @@ class Display:
         return np.array([v.get_time_sec() for v in self.videos]).min()
 
     def seek_record(self, seek_function):
+        def set_text(entry, text):
+            entry.delete(0, END)
+            entry.insert(0, text)
+
         if self.videos:
-            record_time = seek_function(self.videos, self.get_current_video_time())
-            if record_time is not None:
-                self.video_seek(lambda v: v.seek_time(int(record_time)))
+            start_entry = self.root.nametowidget('labelingPanel.startFrame.startEntry')
+            end_entry = self.root.nametowidget('labelingPanel.endFrame.endEntry')
+            movement_combobox = self.root.nametowidget('labelingPanel.movementFrame.movementCombobox')
+
+            result = seek_function(self.videos, self.get_current_video_time())
+            if result is not None:
+                record_start, record_end, label = result
+                self.video_seek(lambda v: v.seek_time(record_start))
+                set_text(start_entry, record_start)
+                set_text(end_entry, record_end)
+                movement_combobox.current(movement_combobox['values'].index(label))
+
 
     def init_video_manager(self, frame):
         videoFrame = Frame(frame, name='videoFrame')

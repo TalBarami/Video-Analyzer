@@ -36,11 +36,10 @@ class DataHandler:
             raise ValueError(f'Start time ({start}) is larger or equals to end time ({end}).')
         # if all(c == 'None' for (v, c) in videos):
         #     raise ValueError(f'Select at least one child color.')
-
+        videos = [v for v in videos if v.video_checked()]
         for v in videos:
-            if v.video_checked():
-                self.df.loc[self.idx] = [v.video_name, float(start), float(end), v.time_to_frame(start), v.time_to_frame(end), movement]
-                self.idx += 1
+            self.df.loc[self.idx] = [v.video_name, float(start), float(end), v.time_to_frame(start), v.time_to_frame(end), movement]
+            self.idx += 1
         added = [v.video_name for v in videos]
 
         return added
@@ -48,8 +47,8 @@ class DataHandler:
     def remove(self, videos, time):
         names = [v.video_name for v in videos if v.video_checked]
         df = self.df
-        removal_cond = df['video'].isin(names) & df['start_time'] < time & df['end_time'] > time
-        df = df[not removal_cond]
+        removal_cond = df['video'].isin(names) & (df['start_time'] < time) & (df['end_time'] > time)
+        df = df[~removal_cond]
         self.df = df
         return names
 
@@ -87,14 +86,24 @@ class DataHandler:
         window.protocol("WM_DELETE_WINDOW", on_closing)
 
     def next_record(self, videos, time):
-        df = self.df
-        df = df[df['video'].isin([v.video_name for v in videos]) & (df['start_time'] > time)]
-        return df['start_time'].min() if not df.empty else None
+        return self.seek_record(videos, lambda df: df['start_time'] > time, lambda df: df['start_time'].min())
 
     def prev_record(self, videos, time):
+        return self.seek_record(videos, lambda df: df['end_time'] < time, lambda df: df['start_time'].max())
+
+    def seek_record(self, videos, direction_func, distance_func):
         df = self.df
-        df = df[df['video'].isin([v.video_name for v in videos]) & (df['end_time'] < time)]
-        return df['start_time'].max() if not df.empty else None
+        df = df[df['video'].isin([v.video_name for v in videos]) & direction_func(df)]
+
+        result = None
+        if not df.empty:
+            start_time = distance_func(df)
+            df = df[df['start_time'] == start_time]
+            end_time = df['end_time'].iloc[0]
+            label = df['movement'].iloc[0]
+            result = (start_time, end_time, label)
+
+        return result
 
     def any(self, video_name):
         return not self.df[self.df['video'] == video_name].empty
