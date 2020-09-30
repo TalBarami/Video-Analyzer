@@ -147,7 +147,7 @@ class Display:
             duration = np.round(duration, 1)
             time_var.set(f'{time}/{duration}\n{frame_number}')
 
-            label_recorded = self.data_handler.intersect(video_name, time)
+            label_recorded = self.data_handler.intersect(video_name, time).iloc[0]['movement']
             main_frame.config(highlightbackground=('red' if label_recorded else 'white'), highlightthickness=5)
             label_var.set(label_recorded if label_recorded else '')
 
@@ -251,8 +251,16 @@ class Display:
                 start = self.root.nametowidget('labelingPanel.startFrame.startEntry').get()
                 end = self.root.nametowidget('labelingPanel.endFrame.endEntry').get()
                 movement = self.root.nametowidget('labelingPanel.movementFrame.movementCombobox').get()
-                added = self.data_handler.add(self.videos, start, end, movement)
+                added = '\n'.join(self.data_handler.add(self.videos, start, end, movement))
                 messagebox.showinfo('Added', f'The following videos were added with start={start}, end={end}, movement={movement}:\n{added}')
+            except ValueError as v:
+                messagebox.showerror('Error', v)
+
+        def remove_button_click():
+            try:
+                current_time = self.get_current_video_time()
+                removed = '\n'.join(self.data_handler.remove(self.videos, current_time))
+                messagebox.showinfo('Removed', f'Removed records at {time} from:\n{removed}')
             except ValueError as v:
                 messagebox.showerror('Error', v)
 
@@ -267,7 +275,9 @@ class Display:
         # Checkbutton(checkboxFrame, text='Display Image', variable=self.video_sync.with_image).pack(side=LEFT, expand=1)
         # checkboxFrame.pack(side=TOP, expand=1)
         Frame(buttonsFrame).pack(pady=5)
-        Button(buttonsFrame, name='addButton', text='Add Record', state=DISABLED, command=add_button_click).pack(side=TOP, expand=1)
+        Button(buttonsFrame, name='addButton', text='Add Records', state=DISABLED, command=add_button_click).pack(side=TOP, expand=1)
+        Frame(buttonsFrame).pack(pady=5)
+        Button(buttonsFrame, name='removeButton', text='Remove Records', state=DISABLED, command=remove_button_click).pack(side=TOP, expand=1)
         Frame(buttonsFrame).pack(pady=5)
         Button(buttonsFrame, name='viewButton', text='View Data',
                command=lambda: self.data_handler.table_editor(self.root)).pack(side=TOP, expand=1)

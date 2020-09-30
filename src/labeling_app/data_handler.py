@@ -42,7 +42,15 @@ class DataHandler:
                 self.idx += 1
         added = [v.video_name for v in videos]
 
-        return '\n'.join(added)
+        return added
+
+    def remove(self, videos, time):
+        names = [v.video_name for v in videos if v.video_checked]
+        df = self.df
+        removal_cond = df['video'].isin(names) & df['start_time'] < time & df['end_time'] > time
+        df = df[not removal_cond]
+        self.df = df
+        return names
 
     def load(self):
         self.df = pd.read_csv(self.csv_path) if os.path.isfile(self.csv_path) else pd.DataFrame(
@@ -55,10 +63,10 @@ class DataHandler:
         self.df.dropna(inplace=True)
         self.df.to_csv(self.csv_path, index=False)
 
-    def intersect(self, video, time):
-        df = self.df[self.df['video'] == video]
+    def intersect(self, video_name, time):
+        df = self.df[self.df['video'] == video_name]
         result = df[(df['start_time'] <= time) & (df['end_time'] >= time)]
-        return None if result.empty else result.iloc[0]['movement']
+        return None if result.empty else result
 
     def table_editor(self, root):
         window = tk.Toplevel(root)
