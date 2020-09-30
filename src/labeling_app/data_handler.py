@@ -12,7 +12,8 @@ class DataHandler:
 
         self.df = None
         self.idx = 0
-        self.movements = ['Hand flapping', 'Tapping', 'Fingers', 'Clapping', 'Body rocking', 'Toe walking', 'Spinning in circle', 'Back and forth', 'Head movement', 'Tremor']
+        self.movements = ['Hand flapping', 'Tapping', 'Fingers', 'Clapping', 'Body rocking', 'Toe walking', 'Spinning in circle',
+                          'Back and forth', 'Head movement', 'Tremor', 'Playing with object', 'Jumping in place']
         self.movements.sort()
         self.movements.append('Other')
         # self.colors = ['Red', 'Green', 'Blue', 'Yellow', 'Purple', 'Cyan', 'Gray', 'Brown']
@@ -86,12 +87,14 @@ class DataHandler:
         window.protocol("WM_DELETE_WINDOW", on_closing)
 
     def next_record(self, videos, time):
-        df = self.df[self.df['video_name'].isin([v.video_name for v in videos]) & (self.df['start_time'] > time)]
-        return df['start_time'].min() if not df.empty() else None
+        df = self.df
+        df = df[df['video'].isin([v.video_name for v in videos]) & (df['start_time'] > time)]
+        return df['start_time'].min() if not df.empty else None
 
     def prev_record(self, videos, time):
-        df = self.df[self.df['video_name'].isin([v.video_name for v in videos]) & (self.df['end_time'] < time)]
-        return df['start_time'].max() if not df.empty() else None
+        df = self.df
+        df = df[df['video'].isin([v.video_name for v in videos]) & (df['end_time'] < time)]
+        return df['start_time'].max() if not df.empty else None
 
     def any(self, video_name):
         return not self.df[self.df['video'] == video_name].empty

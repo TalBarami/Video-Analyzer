@@ -31,7 +31,7 @@ class Display:
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
         self.root.title('Annotations')
         # self.root.iconbitmap('resources/annotations.ico')
-        self.video_seek_last_click = None
+        self.video_seek_last_click = - np.infty
 
     def run(self):
         self.init_file_browser()
@@ -147,9 +147,16 @@ class Display:
             duration = np.round(duration, 1)
             time_var.set(f'{time}/{duration}\n{frame_number}')
 
-            label_recorded = self.data_handler.intersect(video_name, time).iloc[0]['movement']
-            main_frame.config(highlightbackground=('red' if label_recorded else 'white'), highlightthickness=5)
-            label_var.set(label_recorded if label_recorded else '')
+            label_recorded = self.data_handler.intersect(video_name, time)
+            if label_recorded is not None:
+                label_recorded = label_recorded.iloc[0]['movement']
+                color = 'red'
+            else:
+                label_recorded = ''
+                color = 'white'
+
+            main_frame.config(highlightbackground=color, highlightthickness=5)
+            label_var.set(label_recorded)
 
             frame_image = PIL.ImageTk.PhotoImage(image=PIL.Image.fromarray(frame))
             video_label.config(image=frame_image)
@@ -286,7 +293,7 @@ class Display:
 
     def video_seek(self, seek):
         curr_time = time.time()
-        if self.video_sync.is_playing and self.video_seek_last_click and curr_time - self.video_seek_last_click > 0.3:
+        if self.video_sync.is_playing and curr_time - self.video_seek_last_click > 0.3:
             [seek(v) for v in self.videos]
         self.video_seek_last_click = curr_time
 
@@ -308,9 +315,9 @@ class Display:
 
     def seek_record(self, seek_function):
         if self.videos:
-            current_time = self.get_current_video_time()
-            next_record_time = seek_function(current_time)
-            self.video_seek(lambda v: v.seek_time(next_record_time))
+            record_time = seek_function(self.videos, self.get_current_video_time())
+            if record_time is not None:
+                self.video_seek(lambda v: v.seek_time(int(record_time)))
 
     def init_video_manager(self, frame):
         videoFrame = Frame(frame, name='videoFrame')
@@ -325,8 +332,8 @@ class Display:
         seekButtonsFrame = Frame(seekFrame, name='seekButtonsFrame')
         Button(seekButtonsFrame, name='setButton', text='Set Time', command=self.set_time_button_click).pack(side=LEFT, expand=1)
         Button(seekButtonsFrame, name='addButton', text='Add Time', command=self.add_time_button_click).pack(side=LEFT, expand=1)
-        Button(seekButtonsFrame, name='prevButton', text='Previous Record', command=lambda t: self.data_handler.prev_record(self.videos, t)).pack(side=LEFT, expand=1)
-        Button(seekButtonsFrame, name='nextButton', text='Next Record', command=lambda t: self.data_handler.next_record(self.videos, t)).pack(side=LEFT, expand=1)
+        Button(seekButtonsFrame, name='prevButton', text='Previous Record', command=lambda: self.seek_record(self.data_handler.prev_record)).pack(side=LEFT, expand=1)
+        Button(seekButtonsFrame, name='nextButton', text='Next Record', command=lambda: self.seek_record(self.data_handler.next_record)).pack(side=LEFT, expand=1)
         seekButtonsFrame.pack(side=BOTTOM, fill=BOTH, expand=1)
         seekFrame.pack(side=LEFT, fill=X, expand=1, padx=10)
         Frame(videoFrame).pack(padx=10)
