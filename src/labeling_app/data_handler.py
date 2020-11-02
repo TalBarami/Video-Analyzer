@@ -41,7 +41,7 @@ class DataHandler:
             self.df.loc[self.idx] = [v.video_name, float(start), float(end), v.time_to_frame(start), v.time_to_frame(end), movement]
             self.idx += 1
         added = [v.video_name for v in videos]
-
+        self.save()
         return added
 
     def remove(self, videos, time):
@@ -81,6 +81,7 @@ class DataHandler:
         def on_closing():
             if messagebox.askyesno("Quit", "Save changes?"):
                 self.df = table.model.df
+                self.save()
             window.destroy()
 
         window.protocol("WM_DELETE_WINDOW", on_closing)
