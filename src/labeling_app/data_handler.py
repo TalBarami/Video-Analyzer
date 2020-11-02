@@ -54,7 +54,7 @@ class DataHandler:
 
     def load(self):
         self.df = pd.read_csv(self.csv_path) if os.path.isfile(self.csv_path) else pd.DataFrame(
-            columns=['video', 'start_time', 'end_time', 'stat_frame', 'end_frame', 'movement'])
+            columns=['video', 'start_time', 'end_time', 'start_frame', 'end_frame', 'movement'])
         self.df.dropna(inplace=True)
         self.idx = self.df.shape[0]
 
