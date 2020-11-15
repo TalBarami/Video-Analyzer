@@ -6,11 +6,12 @@ import imutils
 
 
 class VideoPlayer:
-    def __init__(self, video_path, video_sync, video_checked, update_function, destroy_function):
+    def __init__(self, video_path, video_sync, video_checked, skeleton, update_function, destroy_function):
         self.video_path = video_path
         self.video_name = os.path.basename(video_path).split('.')[0]
         self.video_sync = video_sync
         self.video_checked = video_checked
+        self.skeleton = skeleton
         self.update_function = update_function
         self.destroy_function = destroy_function
 
@@ -55,7 +56,7 @@ class VideoPlayer:
             # cv2.resize(frame, (self.width, self.height))
             frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
             frame = imutils.resize(frame, self.width, self.height)
-            self.update_function(frame, self.cap.get(cv2.CAP_PROP_POS_FRAMES), self.get_time_sec(), self.duration)
+            self.update_function(frame, self.cap.get(cv2.CAP_PROP_POS_FRAMES), self.get_time_sec(), self.duration, self.skeleton, self.width, self.height)
 
     def read_frame(self):
         if self.cap.isOpened():

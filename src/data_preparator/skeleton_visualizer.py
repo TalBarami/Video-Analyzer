@@ -6,40 +6,41 @@ from os.path import isfile, join
 import cv2
 import numpy as np
 
-POSE_BODY_25_MAP = {
-    0: "Nose",
-    1: "Neck",
-    2: "RShoulder",
-    3: "RElbow",
-    4: "RWrist",
-    5: "LShoulder",
-    6: "LElbow",
-    7: "LWrist",
-    8: "MidHip",
-    9: "RHip",
-    10: "RKnee",
-    11: "RAnkle",
-    12: "LHip",
-    13: "LKnee",
-    14: "LAnkle",
-    15: "REye",
-    16: "LEye",
-    17: "REar",
-    18: "LEar",
-    19: "LBigToe",
-    20: "LSmallToe",
-    21: "LHeel",
-    22: "RBigToe",
-    23: "RSmallToe",
-    24: "RHeel",
-    25: "Background"
-}
-POSE_BODY_25_PAIRS = [(0, 1), (1, 8),
-                      (1, 2), (2, 3), (3, 4),
-                      (1, 5), (5, 6), (6, 7),
-                      (8, 9), (9, 10), (10, 11), (11, 22), (11, 24), (22, 23),
-                      (8, 12), (12, 13), (13, 14), (14, 21), (14, 19), (19, 20),
-                      (0, 15), (15, 17), (0, 16), (16, 18)]
+# POSE_BODY_25_MAP = {
+#     0: "Nose",
+#     1: "Neck",
+#     2: "RShoulder",
+#     3: "RElbow",
+#     4: "RWrist",
+#     5: "LShoulder",
+#     6: "LElbow",
+#     7: "LWrist",
+#     8: "MidHip",
+#     9: "RHip",
+#     10: "RKnee",
+#     11: "RAnkle",
+#     12: "LHip",
+#     13: "LKnee",
+#     14: "LAnkle",
+#     15: "REye",
+#     16: "LEye",
+#     17: "REar",
+#     18: "LEar",
+#     19: "LBigToe",
+#     20: "LSmallToe",
+#     21: "LHeel",
+#     22: "RBigToe",
+#     23: "RSmallToe",
+#     24: "RHeel",
+#     25: "Background"
+# }
+# POSE_BODY_25_PAIRS = [(0, 1), (1, 8),
+#                       (1, 2), (2, 3), (3, 4),
+#                       (1, 5), (5, 6), (6, 7),
+#                       (8, 9), (9, 10), (10, 11), (11, 22), (11, 24), (22, 23),
+#                       (8, 12), (12, 13), (13, 14), (14, 21), (14, 19), (19, 20),
+#                       (0, 15), (15, 17), (0, 16), (16, 18)]
+from src.data_preparator.video_process_pipeline import read_json
 
 POSE_COCO_MAP = {
     0: "Nose",
@@ -71,26 +72,43 @@ POSE_COCO_PAIRS = [(0, 1),
 COLORS_ARRAY = [(0, 0, 255), (0, 255, 0), (255, 0, 0), (0, 255, 255), (255, 0, 255), (255, 255, 0), (128, 128, 128), (42, 42, 165)]
 
 
-def draw_skeleton(frame, pose, score, color, skeleton_type, epsilon=1e-3):
-    for i, (v1, v2) in enumerate(skeleton_type):
+def draw_skeleton(image, pose, score, joint_colors, edge_color=(255, 255, 255), skeleton_type=None, epsilon=1e-3):
+    if skeleton_type is None:
+        skeleton_type = POSE_COCO_PAIRS
+    for (v1, v2) in skeleton_type:
         if score[v1] > epsilon and score[v2] > epsilon:
-            cv2.line(frame, pose[v1], pose[v2], color, thickness=3)
+            cv2.line(image, pose[v1], pose[v2], edge_color, thickness=3)
+    for i, (x, y) in enumerate(pose):
+        cv2.circle(image, (x, y), 2, joint_colors[i], thickness=2)
 
 
-def visualize_frame_pre_processed(frame, json_path, skeleton_type):
-    if not isfile(json_path):
-        print(f'No such file: {json_path}')
-        return
-    with open(json_path, 'r') as json_file:
-        skeletons = json.loads(json_file.read())
-        for p in skeletons['people']:
-            pid = p['person_id']
-            p = p['pose_keypoints_2d']
-            pose = [(int(p[i]), int(p[i + 1])) for i in range(0, len(p), 3)]
-            score = [p[i] for i in range(2, len(p), 3)]
-            color = COLORS_ARRAY[pid] if pid < len(COLORS_ARRAY) else (255, 255, 255)
+def visualize_frame_pre_processed(json, image, frame_index, width=320, height=240):
+    v = json['data']
 
-            draw_skeleton(frame, pose, score, color, skeleton_type)
+    colors = np.ones(shape=(len(POSE_COCO_MAP), 3)) * 255
+    f = v[frame_index]
+    for s in f['skeleton']:
+        x = np.array(s['pose'][0::2]) * width
+        y = np.array(s['pose'][1::2]) * height
+        s['pose'] = [int(np.round(item, 1)) for sublist in zip(x, y) for item in sublist]
+
+        draw_skeleton(image, [x for x in zip(s['pose'][0::2], s['pose'][1::2])], s['score'], colors)
+
+
+# def visualize_frame_pre_processed(frame, json_path, skeleton_type):
+#     if not isfile(json_path):
+#         print(f'No such file: {json_path}')
+#         return
+#     with open(json_path, 'r') as json_file:
+#         skeletons = json.loads(json_file.read())
+#         for p in skeletons['people']:
+#             pid = p['person_id']
+#             p = p['pose_keypoints_2d']
+#             pose = [(int(p[i]), int(p[i + 1])) for i in range(0, len(p), 3)]
+#             score = [p[i] for i in range(2, len(p), 3)]
+#             color = COLORS_ARRAY[pid] if pid < len(COLORS_ARRAY) else (255, 255, 255)
+#
+#             draw_skeleton(frame, pose, score, color, skeleton_type)
 
 
 def visualize_frame_post_processed(frame, video_data, frame_number, skeleton_type):
@@ -139,7 +157,7 @@ def play_skeleton(skeleton, method, resolution=(340, 512)):
         return T, lambda img, i: visualize_frame_tensor(img, M, i, POSE_COCO_PAIRS)
 
     methods = {'pre-processed': pre_processed,
-               'post-processed':post_processed,
+               'post-processed': post_processed,
                'tensor': tensor}
 
     frames, f = methods[method](skeleton)
@@ -151,6 +169,7 @@ def play_skeleton(skeleton, method, resolution=(340, 512)):
         time.sleep(0.01)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
+
 
 def visualize_features(M, filename):
     P, F, T, V = M.shape  # People, Features, Time, Vertices

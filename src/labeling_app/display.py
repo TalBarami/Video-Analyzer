@@ -1,9 +1,11 @@
 import os
 import threading
+from os import path
 from time import sleep
 from tkinter import *
 from tkinter import ttk, messagebox
 from tkinter.filedialog import askopenfilenames
+
 from tendo import singleton
 
 import time
@@ -12,6 +14,8 @@ import PIL.ImageTk
 import cv2
 import numpy as np
 
+from src.data_preparator.skeleton_visualizer import  visualize_frame_pre_processed
+from src.data_preparator.video_process_pipeline import read_json
 from src.labeling_app.data_handler import DataHandler
 from src.labeling_app.video_player import VideoPlayer
 from src.labeling_app.video_sync import VideoSync
@@ -24,7 +28,7 @@ class Display:
         self.video_paths = None
         self.videos = []
         self.video_sync = VideoSync(lambda: self.videos, self.set_play_button_name)
-        self.skeleton_folder = 'D:/research/Ados Recordings/'
+        self.skeletons_dir = 'D:/TalBarami/skeletons'
 
         self.data_handler = DataHandler()
         self.root = Tk()
@@ -107,12 +111,12 @@ class Display:
         # color_combobox.pack(side=RIGHT, fill=X, expand=1, padx=20)
         # color_frame.pack(side=TOP, fill=X, expand=1)
 
-        # skeleton_var = IntVar()
-        # skeleton_var.set(-60)
-        # skeleton_frame = Frame(data_frame)
-        # Label(skeleton_frame, text='Skeleton adjust:').pack(side=LEFT, fill=X, expand=0)
-        # Entry(skeleton_frame, textvariable=skeleton_var).pack(side=RIGHT, fill=X, expand=1, padx=20)
-        # skeleton_frame.pack(side=BOTTOM, fill=X, expand=1)
+        skeleton_var = IntVar()
+        skeleton_var.set(0)
+        skeleton_frame = Frame(data_frame)
+        Label(skeleton_frame, text='Skeleton adjust:').pack(side=LEFT, fill=X, expand=0)
+        Entry(skeleton_frame, textvariable=skeleton_var).pack(side=RIGHT, fill=X, expand=1, padx=20)
+        skeleton_frame.pack(side=BOTTOM, fill=X, expand=1)
 
         time_var = DoubleVar()
         Label(data_frame, textvariable=time_var, width=10).pack(side=TOP)
@@ -125,24 +129,16 @@ class Display:
 
         data_frame.pack(side=LEFT, fill=BOTH, expand=1)
 
-        def update_function(frame, frame_number, current_time, duration):
+        file_path = path.join(self.skeletons_dir, f'{video_name}.json')
+        skeleton_json = read_json(file_path) if path.isfile(file_path) else None
+
+        def update_function(frame, frame_number, current_time, duration, skeleton, video_width, video_height):
             if self.video_sync.stop_thread:
                 return
-            # if not self.video_sync.with_image.get():
-            #     frame *= 0
-            # if self.video_sync.with_skeleton.get():
-            #     try:
-            #         adjust = skeleton_var.get()
-            #         try:
-            #             adjust = int(adjust)
-            #         except ValueError:
-            #             adjust = 0
-            #
-            #         filename = f'{video_name}_{str(int(frame_number) + adjust).zfill(12)}_keypoints.json'
-            #         person_id = video_name.split('_', 1)[0]
-            #         visualize_frame_pre_processed(frame, join(self. , person_id, video_name, filename), POSE_BODY_25_PAIRS)
-            #     except TclError as e:
-            #         print(f'Error: {e}')
+            if not self.video_sync.with_image.get():
+                frame *= 0
+            if skeleton_json and self.video_sync.with_skeleton:
+                visualize_frame_pre_processed(skeleton, frame, int(frame_number + skeleton_var.get()), width=video_width, height=video_height)
 
             time = np.round(current_time, 1)
             duration = np.round(duration, 1)
@@ -168,6 +164,7 @@ class Display:
 
         return VideoPlayer(video_path, self.video_sync,
                            video_checked=lambda: include_video.get(),
+                           skeleton=skeleton_json,
                            update_function=update_function,
                            destroy_function=destroy_function)
 
@@ -274,14 +271,14 @@ class Display:
 
         buttonsFrame = Frame(frame, name='buttonsFrame')
 
-        # checkboxFrame = Frame(buttonsFrame)
-        # self.video_sync.with_skeleton = BooleanVar()
-        # self.video_sync.with_skeleton.set(True)
-        # Checkbutton(checkboxFrame, text='Display Skeleton', variable=self.video_sync.with_skeleton).pack(side=LEFT, expand=1)
-        # self.video_sync.with_image = BooleanVar()
-        # self.video_sync.with_image.set(True)
-        # Checkbutton(checkboxFrame, text='Display Image', variable=self.video_sync.with_image).pack(side=LEFT, expand=1)
-        # checkboxFrame.pack(side=TOP, expand=1)
+        checkboxFrame = Frame(buttonsFrame)
+        self.video_sync.with_skeleton = BooleanVar()
+        self.video_sync.with_skeleton.set(True)
+        Checkbutton(checkboxFrame, text='Display Skeleton', variable=self.video_sync.with_skeleton).pack(side=LEFT, expand=1)
+        self.video_sync.with_image = BooleanVar()
+        self.video_sync.with_image.set(True)
+        Checkbutton(checkboxFrame, text='Display Image', variable=self.video_sync.with_image).pack(side=LEFT, expand=1)
+        checkboxFrame.pack(side=TOP, expand=1)
         Frame(buttonsFrame).pack(pady=5)
         Button(buttonsFrame, name='addButton', text='Add Records', state=DISABLED, command=add_button_click).pack(side=TOP, expand=1)
         Frame(buttonsFrame).pack(pady=5)

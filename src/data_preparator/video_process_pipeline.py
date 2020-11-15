@@ -3,10 +3,8 @@ import os
 import shlex
 from json.decoder import JSONDecodeError
 from os import listdir
-from os.path import isfile, join, basename, splitext, dirname
+from os import path
 from subprocess import check_call
-from pytube import YouTube
-from moviepy.video.io.ffmpeg_tools import ffmpeg_extract_subclip
 from pathlib import Path
 import shutil
 import cv2
