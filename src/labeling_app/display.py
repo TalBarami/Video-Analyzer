@@ -27,7 +27,6 @@ class Display:
     def __init__(self):
         self.video_paths = None
         self.videos = []
-        self.video_sync = VideoSync(lambda: self.videos, self.set_play_button_name)
         self.skeletons_dir = 'D:/TalBarami/skeletons'
 
         self.data_handler = DataHandler()
@@ -36,6 +35,7 @@ class Display:
         self.root.title('Annotations')
         # self.root.iconbitmap('resources/annotations.ico')
         self.video_seek_last_click = - np.infty
+        self.video_sync = VideoSync(lambda: self.videos, self.set_play_button_name, lambda t: self.root.nametowidget('labelingPanel.manageFrame.videoFrame.seekFrame.scaleBar').set(t))
 
     def run(self):
         self.init_file_browser()
@@ -336,7 +336,14 @@ class Display:
         seekFrame = Frame(videoFrame, name='seekFrame')
         Label(seekFrame, text='Position settings').pack(side=TOP, fill=BOTH, expand=1)
         s = Scale(seekFrame, name='scaleBar', orient=HORIZONTAL, from_=0, to=0, tickinterval=0, state=DISABLED)
-        s.bind("<ButtonRelease-1>", lambda i: [v.seek_time(s.get()) for v in self.videos])
+        def scale_click(event):
+            self.video_sync.scale_focus(True)
+        def scale_release(event):
+            for v in self.videos:
+                v.seek_time(s.get())
+            self.video_sync.scale_focus(False)
+        s.bind("<ButtonPress-1>", scale_click)
+        s.bind("<ButtonRelease-1>", scale_release)
         s.pack(side=TOP, fill=BOTH, expand=1)
         e = Entry(seekFrame, name='seekEntry')
         e.pack(side=TOP, fill=X, ipadx=70, expand=0)
