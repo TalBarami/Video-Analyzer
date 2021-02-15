@@ -20,14 +20,14 @@ class VideoPlayer:
         if not self.cap.isOpened():
             raise ValueError("Unable to open video source", self.video_path)
 
-        self.fps = int(self.cap.get(cv2.CAP_PROP_FPS))
+        self.fps = self.cap.get(cv2.CAP_PROP_FPS)
 
         self.frames_count = self.cap.get(cv2.CAP_PROP_FRAME_COUNT)
         self.duration = self.frames_count / self.fps
 
         self.width, self.height = self.calc_resolution()
 
-        print(f'Playing {self.video_path} on {self.fps} fps (actual: {self.cap.get(cv2.CAP_PROP_FPS)} fps), total {self.frames_count} frames, duration {self.duration}')
+        print(f'Playing {self.video_path} on {self.fps} fps, total {self.frames_count} frames, duration {self.duration}')
 
     def calc_resolution(self):
         max_width = max_height = 400
