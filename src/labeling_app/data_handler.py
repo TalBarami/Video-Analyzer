@@ -1,4 +1,5 @@
 import tkinter as tk
+from pathlib import Path
 from tkinter import messagebox
 import os
 
@@ -8,6 +9,7 @@ from pandastable import Table
 
 class DataHandler:
     def __init__(self):
+        Path('resources').mkdir(parents=True, exist_ok=True)
         self.csv_path = 'resources/labels.csv'
 
         self.df = None
@@ -21,11 +23,11 @@ class DataHandler:
 
         self.load()
 
-    def add(self, videos, start, end, movement):
+    def add(self, videos, start, end, movements):
         if len(videos) < 1:
             raise ValueError('No videos were selected.')
 
-        data = [(start, 'start'), (end, 'end'), (movement, 'movement')]
+        data = [(start, 'start'), (end, 'end'), (movements, 'movements')]
         err = [v for k, v in data if not k]
 
         if len(err) > 0:
@@ -38,8 +40,9 @@ class DataHandler:
         #     raise ValueError(f'Select at least one child color.')
         videos = [v for v in videos if v.video_checked()]
         for v in videos:
-            self.df.loc[self.idx] = [v.video_name, float(start), float(end), v.time_to_frame(start), v.time_to_frame(end), movement]
-            self.idx += 1
+            for m in movements:
+                self.df.loc[self.idx] = [v.video_name, float(start), float(end), v.time_to_frame(start), v.time_to_frame(end), m]
+                self.idx += 1
         added = [v.video_name for v in videos]
         self.save()
         return added
@@ -47,7 +50,7 @@ class DataHandler:
     def remove(self, videos, time):
         names = [v.video_name for v in videos if v.video_checked]
         df = self.df
-        removal_cond = df['video'].isin(names) & (df['start_time'] < time) & (df['end_time'] > time)
+        removal_cond = df['video'].isin(names) & (df['start_time'] <= time) & (df['end_time'] >= time)
         df = df[~removal_cond]
         self.df = df
         return names

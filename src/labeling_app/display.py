@@ -11,7 +11,6 @@ from tendo import singleton
 import time
 import PIL.Image
 import PIL.ImageTk
-import cv2
 import numpy as np
 
 from src.data_preparator.skeleton_visualizer import  visualize_frame_pre_processed
@@ -36,6 +35,7 @@ class Display:
         # self.root.iconbitmap('resources/annotations.ico')
         self.video_seek_last_click = - np.infty
         self.video_sync = VideoSync(lambda: self.videos, self.set_play_button_name, lambda t: self.root.nametowidget('labelingPanel.manageFrame.videoFrame.seekFrame.scaleBar').set(t))
+        self.selected_classes = {action: BooleanVar() for action in self.data_handler.movements}
 
     def run(self):
         self.init_file_browser()
@@ -122,7 +122,7 @@ class Display:
         Label(data_frame, textvariable=time_var, width=10).pack(side=TOP)
 
         label_var = StringVar()
-        Label(data_frame, textvariable=label_var, width=30).pack(side=TOP)
+        Label(data_frame, textvariable=label_var, width=50).pack(side=TOP)
 
         include_video = IntVar(value=1)
         Checkbutton(data_frame, text='Include Video', variable=include_video).pack(side=TOP)
@@ -144,16 +144,16 @@ class Display:
             duration = np.round(duration, 1)
             time_var.set(f'{time}/{duration}\n{frame_number}')
 
-            label_recorded = self.data_handler.intersect(video_name, time)
-            if label_recorded is not None:
-                label_recorded = label_recorded.iloc[0]['movement']
+            labels_recorded = self.data_handler.intersect(video_name, time)
+            if labels_recorded is not None:
+                labels_recorded = ','.join(labels_recorded['movement'].tolist())
                 color = 'red'
             else:
-                label_recorded = ''
+                labels_recorded = ''
                 color = 'white'
 
             main_frame.config(highlightbackground=color, highlightthickness=5)
-            label_var.set(label_recorded)
+            label_var.set(labels_recorded)
 
             frame_image = PIL.ImageTk.PhotoImage(image=PIL.Image.fromarray(frame))
             video_label.config(image=frame_image)
@@ -233,11 +233,20 @@ class Display:
         endFrame.pack(fill=BOTH, expand=1)
         Frame(panel).pack(pady=5)
 
-        movementFrame = Frame(panel, name='movementFrame')
-        Label(movementFrame, name='movementLabel', text='Class:').pack(side=LEFT, fill=X, padx=50)
-        ttk.Combobox(movementFrame, name='movementCombobox', state='readonly', values=self.data_handler.movements).pack(
-            side=LEFT, fill=X, ipadx=60, expand=0)
-        movementFrame.pack(fill=BOTH, expand=1)
+        annotations_frame = Frame(panel, name='annotationsFrame')
+        Label(annotations_frame, name='annotationsLabel', text='Classes:').pack(side=LEFT, fill=X, padx=50)
+        classesFrame = Frame(annotations_frame, name='classesFrame', bd=1, relief=SOLID)
+        for i, (name, var) in enumerate(self.selected_classes.items()):
+            if i % 4 == 0:
+                p = Frame(classesFrame, name=f'classRow_{i // 4}')
+            cb = Checkbutton(p, text=name, variable=var)
+            cb.pack(side=LEFT, fill=X)
+            if i % 4 == 3:
+                p.pack(fill=BOTH, expand=1)
+        # ttk.Combobox(movementFrame, name='movementCombobox', state='readonly', values=self.data_handler.movements).pack(
+        #     side=LEFT, fill=X, ipadx=60, expand=0)
+        classesFrame.pack(side=LEFT)
+        annotations_frame.pack(fill=BOTH, expand=1)
         Frame(panel).pack(pady=5)
 
     def init_management_frame(self, panel):
@@ -255,9 +264,10 @@ class Display:
                 # video = [(v, v.color()) for v in self.videos]
                 start = self.root.nametowidget('labelingPanel.startFrame.startEntry').get()
                 end = self.root.nametowidget('labelingPanel.endFrame.endEntry').get()
-                movement = self.root.nametowidget('labelingPanel.movementFrame.movementCombobox').get()
-                added = '\n'.join(self.data_handler.add(self.videos, start, end, movement))
-                messagebox.showinfo('Added', f'The following videos were added with start={start}, end={end}, movement={movement}:\n{added}')
+                actions = [act for act, var in self.selected_classes.items() if var.get()]
+                # movement = self.root.nametowidget('labelingPanel.movementFrame.movementCombobox').get()
+                added = '\n'.join(self.data_handler.add(self.videos, start, end, actions))
+                messagebox.showinfo('Added', f'The following videos were added with start={start}, end={end}, movement/s={",".join(actions)}:\n{added}')
             except ValueError as v:
                 messagebox.showerror('Error', v)
 
