@@ -77,6 +77,7 @@ class Display:
         self.video_sync.stop_thread = False
         self.video_sync.is_playing = False
         self.videos = [self.create_video_player(v, i) for i, v in enumerate(self.video_paths)]
+        self.video_sync.kill_tasks()
         self.video_sync.start()
 
         lengths = [v.duration for v in self.videos]
@@ -91,7 +92,7 @@ class Display:
         main_frame.pack(side=LEFT, fill=BOTH, expand=1)
 
         header_frame = Frame(main_frame)
-        name_label = Label(header_frame, text=video_name, width=30)
+        name_label = Label(header_frame, text=video_name, width=60)
         name_label.pack(side=TOP)
         previously_recorded = self.data_handler.any(video_name)
         name_label.config(fg='Red' if previously_recorded else None)
@@ -111,12 +112,12 @@ class Display:
         # color_combobox.pack(side=RIGHT, fill=X, expand=1, padx=20)
         # color_frame.pack(side=TOP, fill=X, expand=1)
 
-        skeleton_var = IntVar()
-        skeleton_var.set(0)
-        skeleton_frame = Frame(data_frame)
-        Label(skeleton_frame, text='Skeleton adjust:').pack(side=LEFT, fill=X, expand=0)
-        Entry(skeleton_frame, textvariable=skeleton_var).pack(side=RIGHT, fill=X, expand=1, padx=20)
-        skeleton_frame.pack(side=BOTTOM, fill=X, expand=1)
+        # skeleton_var = IntVar()
+        # skeleton_var.set(0)
+        # skeleton_frame = Frame(data_frame)
+        # Label(skeleton_frame, text='Skeleton adjust:').pack(side=LEFT, fill=X, expand=0)
+        # Entry(skeleton_frame, textvariable=skeleton_var).pack(side=RIGHT, fill=X, expand=1, padx=20)
+        # skeleton_frame.pack(side=BOTTOM, fill=X, expand=1)
 
         time_var = DoubleVar()
         Label(data_frame, textvariable=time_var, width=10).pack(side=TOP)
@@ -135,10 +136,10 @@ class Display:
         def update_function(frame, frame_number, current_time, duration, skeleton, video_width, video_height):
             if self.video_sync.stop_thread:
                 return
-            if not self.video_sync.with_image.get():
-                frame *= 0
-            if skeleton_json and self.video_sync.with_skeleton:
-                visualize_frame_pre_processed(skeleton, frame, int(frame_number + skeleton_var.get()), width=video_width, height=video_height)
+            # if not self.video_sync.with_image.get():
+            #     frame *= 0
+            # if skeleton_json and self.video_sync.with_skeleton:
+            #     visualize_frame_pre_processed(skeleton, frame, int(frame_number + skeleton_var.get()), width=video_width, height=video_height)
 
             time = np.round(current_time, 1)
             duration = np.round(duration, 1)
@@ -216,28 +217,29 @@ class Display:
                 return True
             except ValueError:
                 return False
-
+        dataInputFrame = Frame(panel, name='dataInputFrame')
         vcmd = (self.root.register(validate),
                 '%d', '%i', '%P', '%s', '%S', '%v', '%V', '%W')
-
-        startFrame = Frame(panel, name='startFrame')
+        locationFrame = Frame(dataInputFrame, name='locationFrame')
+        startFrame = Frame(locationFrame, name='startFrame')
         Label(startFrame, name='startLabel', text='Start:').pack(side=LEFT, fill=X, padx=51)
         Entry(startFrame, name='startEntry', validate='key', validatecommand=vcmd).pack(side=LEFT, fill=X, ipadx=70,
                                                                                         expand=0)
         startFrame.pack(fill=BOTH, expand=1)
-        Frame(panel).pack(pady=5)
+        Frame(locationFrame).pack(pady=5)
 
-        endFrame = Frame(panel, name='endFrame')
+        endFrame = Frame(locationFrame, name='endFrame')
         Label(endFrame, name='endLabel', text='End:').pack(side=LEFT, fill=X, padx=53)
         Entry(endFrame, name='endEntry', validate='key', validatecommand=vcmd).pack(side=LEFT, fill=X, ipadx=70, expand=0)
         endFrame.pack(fill=BOTH, expand=1)
-        Frame(panel).pack(pady=5)
+        Frame(locationFrame).pack(pady=5)
+        locationFrame.pack(side=LEFT, fill=BOTH)
 
-        annotations_frame = Frame(panel, name='annotationsFrame')
+        annotations_frame = Frame(dataInputFrame, name='annotationsFrame')
         Label(annotations_frame, name='annotationsLabel', text='Classes:').pack(side=LEFT, fill=X, padx=50)
         classesFrame = Frame(annotations_frame, name='classesFrame', bd=1, relief=SOLID)
         for i, (name, var) in enumerate(self.selected_classes.items()):
-            if i % 4 == 0:
+            if i % 4 == 0 and i != 12:
                 p = Frame(classesFrame, name=f'classRow_{i // 4}')
             cb = Checkbutton(p, text=name, variable=var)
             cb.pack(side=LEFT, fill=X)
@@ -246,8 +248,9 @@ class Display:
         # ttk.Combobox(movementFrame, name='movementCombobox', state='readonly', values=self.data_handler.movements).pack(
         #     side=LEFT, fill=X, ipadx=60, expand=0)
         classesFrame.pack(side=LEFT)
-        annotations_frame.pack(fill=BOTH, expand=1)
-        Frame(panel).pack(pady=5)
+        annotations_frame.pack(side=LEFT, fill=BOTH)
+        Frame(annotations_frame).pack(pady=5)
+        dataInputFrame.pack(fill=BOTH, expand=1)
 
     def init_management_frame(self, panel):
         manageFrame = Frame(panel, name='manageFrame')
@@ -262,8 +265,8 @@ class Display:
         def add_button_click():
             try:
                 # video = [(v, v.color()) for v in self.videos]
-                start = self.root.nametowidget('labelingPanel.startFrame.startEntry').get()
-                end = self.root.nametowidget('labelingPanel.endFrame.endEntry').get()
+                start = self.root.nametowidget('labelingPanel.dataInputFrame.locationFrame.startFrame.startEntry').get()
+                end = self.root.nametowidget('labelingPanel.dataInputFrame.locationFrame.endFrame.endEntry').get()
                 actions = [act for act, var in self.selected_classes.items() if var.get()]
                 # movement = self.root.nametowidget('labelingPanel.movementFrame.movementCombobox').get()
                 added = '\n'.join(self.data_handler.add(self.videos, start, end, actions))
@@ -281,14 +284,14 @@ class Display:
 
         buttonsFrame = Frame(frame, name='buttonsFrame')
 
-        checkboxFrame = Frame(buttonsFrame)
-        self.video_sync.with_skeleton = BooleanVar()
-        self.video_sync.with_skeleton.set(True)
-        Checkbutton(checkboxFrame, text='Display Skeleton', variable=self.video_sync.with_skeleton).pack(side=LEFT, expand=1)
-        self.video_sync.with_image = BooleanVar()
-        self.video_sync.with_image.set(True)
-        Checkbutton(checkboxFrame, text='Display Image', variable=self.video_sync.with_image).pack(side=LEFT, expand=1)
-        checkboxFrame.pack(side=TOP, expand=1)
+        # checkboxFrame = Frame(buttonsFrame)
+        # self.video_sync.with_skeleton = BooleanVar()
+        # self.video_sync.with_skeleton.set(True)
+        # Checkbutton(checkboxFrame, text='Display Skeleton', variable=self.video_sync.with_skeleton).pack(side=LEFT, expand=1)
+        # self.video_sync.with_image = BooleanVar()
+        # self.video_sync.with_image.set(True)
+        # Checkbutton(checkboxFrame, text='Display Image', variable=self.video_sync.with_image).pack(side=LEFT, expand=1)
+        # checkboxFrame.pack(side=TOP, expand=1)
         Frame(buttonsFrame).pack(pady=5)
         Button(buttonsFrame, name='addButton', text='Add Records', state=DISABLED, command=add_button_click).pack(side=TOP, expand=1)
         Frame(buttonsFrame).pack(pady=5)
@@ -327,17 +330,20 @@ class Display:
             entry.insert(0, text)
 
         if self.videos:
-            start_entry = self.root.nametowidget('labelingPanel.startFrame.startEntry')
-            end_entry = self.root.nametowidget('labelingPanel.endFrame.endEntry')
-            movement_combobox = self.root.nametowidget('labelingPanel.movementFrame.movementCombobox')
+            start_entry = self.root.nametowidget('labelingPanel.dataInputFrame.locationFrame.startFrame.startEntry')
+            end_entry = self.root.nametowidget('labelingPanel.dataInputFrame.locationFrame.endFrame.endEntry')
+            # movement_combobox = self.root.nametowidget('labelingPanel.movementFrame.movementCombobox')
 
             result = seek_function(self.videos, self.get_current_video_time())
             if result is not None:
-                record_start, record_end, label = result
+                record_start, record_end, labels = result
                 self.video_seek(lambda v: v.seek_time(record_start))
                 set_text(start_entry, record_start)
                 set_text(end_entry, record_end)
-                movement_combobox.current(movement_combobox['values'].index(label))
+
+                for action, var in self.selected_classes.items():
+                    var.set(action in labels)
+                # movement_combobox.current(movement_combobox['values'].index(label))
 
 
     def init_video_manager(self, frame):

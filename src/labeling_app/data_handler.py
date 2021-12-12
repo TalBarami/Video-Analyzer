@@ -104,7 +104,7 @@ class DataHandler:
             start_time = distance_func(df)
             df = df[df['start_time'] == start_time]
             end_time = df['end_time'].iloc[0]
-            label = df['movement'].iloc[0]
+            label = df['movement'].unique().tolist()
             result = (start_time, end_time, label)
 
         return result
