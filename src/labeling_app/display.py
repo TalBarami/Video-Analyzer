@@ -77,7 +77,6 @@ class Display:
         self.video_sync.stop_thread = False
         self.video_sync.is_playing = False
         self.videos = [self.create_video_player(v, i) for i, v in enumerate(self.video_paths)]
-        self.video_sync.kill_tasks()
         self.video_sync.start()
 
         lengths = [v.duration for v in self.videos]

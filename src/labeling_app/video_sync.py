@@ -38,11 +38,6 @@ class VideoSync:
         self.stream_thread.start()
         self.lock.release()
 
-    def kill_tasks(self):
-        self.stop_thread = True
-        for t in self.running_tasks:
-            t.cancel()
-
     def stop(self):
         self.lock.acquire()
         self.stop_thread = True
@@ -70,6 +65,8 @@ class VideoSync:
                 self.running_tasks = [self.executor.submit(task) for task in [v.next for v in vids]]
                 for t in self.running_tasks:
                     t.result()
+            else:
+                break
 
     def reset(self):
         self.lock.acquire()
