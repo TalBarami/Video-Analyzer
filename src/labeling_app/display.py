@@ -272,8 +272,10 @@ class Display:
                 messagebox.showinfo('Added', f'The following videos were added with start={start}, end={end}, movement/s={",".join(actions)}:\n{added}')
             except ValueError as v:
                 messagebox.showerror('Error', v)
+            for var in self.selected_classes.values():
+                var.set(False)
 
-        def remove_button_click():
+        def update_button_click():
             try:
                 current_time = self.get_current_video_time()
                 self.data_handler.remove(self.videos, current_time)
@@ -294,7 +296,7 @@ class Display:
         Frame(buttonsFrame).pack(pady=5)
         Button(buttonsFrame, name='addButton', text='Add Records', state=DISABLED, command=add_button_click).pack(side=TOP, expand=1)
         Frame(buttonsFrame).pack(pady=5)
-        Button(buttonsFrame, name='updateButton', text='Update Records', state=DISABLED, command=remove_button_click).pack(side=TOP, expand=1)
+        Button(buttonsFrame, name='updateButton', text='Update Records', state=DISABLED, command=update_button_click).pack(side=TOP, expand=1)
         Frame(buttonsFrame).pack(pady=5)
         Button(buttonsFrame, name='viewButton', text='View Data',
                command=lambda: self.data_handler.table_editor(self.root)).pack(side=TOP, expand=1)
