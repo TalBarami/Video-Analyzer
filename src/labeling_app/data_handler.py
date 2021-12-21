@@ -39,9 +39,10 @@ class DataHandler:
         # if all(c == 'None' for (v, c) in videos):
         #     raise ValueError(f'Select at least one child color.')
         videos = [v for v in videos if v.video_checked()]
+        calc_date = pd.to_datetime('now')
         for v in videos:
             for m in movements:
-                self.df.loc[self.idx] = [v.video_name, float(start), float(end), v.time_to_frame(start), v.time_to_frame(end), m]
+                self.df.loc[self.idx] = [v.video_name, float(start), float(end), v.time_to_frame(start), v.time_to_frame(end), m, calc_date]
                 self.idx += 1
         added = [v.video_name for v in videos]
         self.save()
@@ -57,7 +58,7 @@ class DataHandler:
 
     def load(self):
         self.df = pd.read_csv(self.csv_path) if os.path.isfile(self.csv_path) else pd.DataFrame(
-            columns=['video', 'start_time', 'end_time', 'start_frame', 'end_frame', 'movement'])
+            columns=['video', 'start_time', 'end_time', 'start_frame', 'end_frame', 'movement', 'calc_date'])
         self.df.dropna(inplace=True)
         self.idx = self.df.shape[0]
 
