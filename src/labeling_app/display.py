@@ -146,7 +146,7 @@ class Display:
 
             labels_recorded = self.data_handler.intersect(video_name, time)
             if labels_recorded is not None:
-                labels_recorded = ','.join(labels_recorded['movement'].tolist())
+                labels_recorded = ','.join(eval(labels_recorded['movement']))
                 color = 'red'
             else:
                 labels_recorded = ''

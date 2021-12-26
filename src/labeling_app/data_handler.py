@@ -40,9 +40,8 @@ class DataHandler:
         #     raise ValueError(f'Select at least one child color.')
         videos = [v for v in videos if v.video_checked()]
         for v in videos:
-            for m in movements:
-                self.df.loc[self.idx] = [v.video_name, float(start), float(end), v.time_to_frame(start), v.time_to_frame(end), m]
-                self.idx += 1
+            self.df.loc[self.idx] = [v.video_name, float(start), float(end), v.time_to_frame(start), v.time_to_frame(end), movements]
+            self.idx += 1
         added = [v.video_name for v in videos]
         self.save()
         return added
@@ -69,7 +68,9 @@ class DataHandler:
     def intersect(self, video_name, time):
         df = self.df[self.df['video'] == video_name]
         result = df[(df['start_time'] <= time) & (df['end_time'] >= time)]
-        return None if result.empty else result
+        if result.shape[0] > 1:
+            print('Error: multiple intersections?')
+        return None if result.empty else result.iloc[0]
 
     def table_editor(self, root):
         window = tk.Toplevel(root)
