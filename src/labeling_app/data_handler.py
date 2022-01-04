@@ -6,6 +6,8 @@ import os
 import pandas as pd
 from pandastable import Table
 
+from src.SkeletonTools.src.skeleton_tools.utils.constants import REAL_DATA_MOVEMENTS
+
 
 class DataHandler:
     def __init__(self):
@@ -14,10 +16,7 @@ class DataHandler:
 
         self.df = None
         self.idx = 0
-        self.movements = ['Hand flapping', 'Tapping', 'Fingers', 'Clapping', 'Body rocking', 'Toe walking', 'Spinning in circle',
-                          'Back and forth', 'Head movement', 'Tremor', 'Playing with object', 'Jumping in place', 'Legs Movement']
-        self.movements.sort()
-        self.movements.append('Other')
+        self.movements = REAL_DATA_MOVEMENTS[:-1]
         # self.colors = ['Red', 'Green', 'Blue', 'Yellow', 'Purple', 'Cyan', 'Gray', 'Brown']
         # self.color_items = ['None', 'Unidentified'] + self.colors
 
