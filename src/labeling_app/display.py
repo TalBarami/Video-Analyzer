@@ -246,6 +246,7 @@ class Display:
                 p.pack(fill=BOTH, expand=1)
         # ttk.Combobox(movementFrame, name='movementCombobox', state='readonly', values=self.data_handler.movements).pack(
         #     side=LEFT, fill=X, ipadx=60, expand=0)
+
         classesFrame.pack(side=LEFT)
         annotations_frame.pack(side=LEFT, fill=BOTH)
         Frame(annotations_frame).pack(pady=5)
