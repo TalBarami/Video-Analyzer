@@ -6,6 +6,8 @@ import os
 import pandas as pd
 from pandastable import Table
 
+from src.SkeletonTools.src.skeleton_tools.utils.constants import REAL_DATA_MOVEMENTS
+
 
 class DataHandler:
     def __init__(self):
@@ -14,11 +16,7 @@ class DataHandler:
 
         self.df = None
         self.idx = 0
-        self.movements = ['Hand flapping', 'Tapping', 'Fingers', 'Clapping', 'Feeling Texture', 'Playing with object',
-                          'Body rocking', 'Tremor', 'Toe walking', 'Spinning in circle', 'Back and forth',
-                          'Head movement', 'Jumping in place', 'Legs Movement']
-        self.movements.sort()
-        self.movements.append('Other')
+        self.movements = REAL_DATA_MOVEMENTS[:-1]
         # self.colors = ['Red', 'Green', 'Blue', 'Yellow', 'Purple', 'Cyan', 'Gray', 'Brown']
         # self.color_items = ['None', 'Unidentified'] + self.colors
 
@@ -42,9 +40,8 @@ class DataHandler:
         videos = [v for v in videos if v.video_checked()]
         calc_date = pd.to_datetime('now')
         for v in videos:
-            for m in movements:
-                self.df.loc[self.idx] = [v.video_name, float(start), float(end), v.time_to_frame(start), v.time_to_frame(end), m, calc_date]
-                self.idx += 1
+            self.df.loc[self.idx] = [v.video_name, float(start), float(end), v.time_to_frame(start), v.time_to_frame(end), movements, calc_date]
+            self.idx += 1
         added = [v.video_name for v in videos]
         self.save()
         return added
@@ -71,7 +68,9 @@ class DataHandler:
     def intersect(self, video_name, time):
         df = self.df[self.df['video'] == video_name]
         result = df[(df['start_time'] <= time) & (df['end_time'] >= time)]
-        return None if result.empty else result
+        if result.shape[0] > 1:
+            print('Error: multiple intersections?')
+        return None if result.empty else result.iloc[0]
 
     def table_editor(self, root):
         window = tk.Toplevel(root)

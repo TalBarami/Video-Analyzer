@@ -13,8 +13,7 @@ import PIL.Image
 import PIL.ImageTk
 import numpy as np
 
-from src.data_preparator.skeleton_visualizer import  visualize_frame_pre_processed
-from src.data_preparator.video_process_pipeline import read_json
+from skeleton_tools.utils.tools import read_json
 from src.labeling_app.data_handler import DataHandler
 from src.labeling_app.video_player import VideoPlayer
 from src.labeling_app.video_sync import VideoSync
@@ -146,7 +145,8 @@ class Display:
 
             labels_recorded = self.data_handler.intersect(video_name, time)
             if labels_recorded is not None:
-                labels_recorded = ','.join(labels_recorded['movement'].tolist())
+                act = labels_recorded['movement']
+                labels_recorded = ','.join(act if type(act) == list else eval(act))
                 color = 'red'
             else:
                 labels_recorded = ''
