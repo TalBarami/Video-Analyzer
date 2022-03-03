@@ -13,6 +13,7 @@ import PIL.Image
 import PIL.ImageTk
 import numpy as np
 
+from skeleton_tools.utils.constants import NET_NAME
 from skeleton_tools.utils.tools import read_json
 from src.labeling_app.data_handler import DataHandler
 from src.labeling_app.video_player import VideoPlayer
@@ -83,7 +84,7 @@ class Display:
         self.root.nametowidget('labelingPanel.manageFrame.videoFrame.seekFrame.scaleBar').config(to=length, tickinterval=length / 10)
 
     def create_video_player(self, video_path, idx):
-        video_name = os.path.basename(video_path).split('.')[0]
+        video_name = os.path.basename(video_path)
         videos_frame = self.root.nametowidget('mediaPanel.videosFrame')
 
         main_frame = Frame(videos_frame, name=f'video_{idx}', highlightthickness=2)
@@ -128,7 +129,7 @@ class Display:
 
         data_frame.pack(side=LEFT, fill=BOTH, expand=1)
 
-        file_path = path.join(self.skeletons_dir, f'{video_name}.json')
+        file_path = path.join(self.skeletons_dir, f'{path.splitext(video_name)[0]}.json')
         skeleton_json = read_json(file_path) if path.isfile(file_path) else None
 
         def update_function(frame, frame_number, current_time, duration, skeleton, video_width, video_height):
@@ -143,11 +144,13 @@ class Display:
             duration = np.round(duration, 1)
             time_var.set(f'{time}/{duration}\n{frame_number}')
 
-            labels_recorded = self.data_handler.intersect(video_name, time)
-            if labels_recorded is not None:
-                act = labels_recorded['movement']
-                labels_recorded = ','.join(act if type(act) == list else eval(act))
-                color = 'red'
+            ret, labels_recorded = self.data_handler.intersect(video_name, time)
+            if ret:
+                act = set(labels_recorded['movement'])
+                annotators = set(labels_recorded['annotator'])
+                labels_recorded = ','.join(act)
+                # labels_recorded = ','.join(act if type(act) == list else eval(act)) if type(act) == list or act[0] == '[' else act
+                color = 'purple' if (NET_NAME in annotators and len(annotators) > 1) else 'green' if NET_NAME in annotators else 'blue'
             else:
                 labels_recorded = ''
                 color = 'white'

@@ -5,15 +5,16 @@ import os
 
 import pandas as pd
 from pandastable import Table
-
+pd.set_option('display.expand_frame_repr', False)
 from src.SkeletonTools.src.skeleton_tools.utils.constants import REAL_DATA_MOVEMENTS
 
 
 class DataHandler:
     def __init__(self):
         Path('resources').mkdir(parents=True, exist_ok=True)
+        # self.csv_path = 'resources/22210917_ADOS_Clinical_120320_0938_4.csv'
         self.csv_path = 'resources/labels.csv'
-
+        self.columns = ['video', 'start_time', 'end_time', 'start_frame', 'end_frame', 'movement', 'calc_date', 'annotator']
         self.df = None
         self.idx = 0
         self.movements = REAL_DATA_MOVEMENTS[:-1]
@@ -56,12 +57,11 @@ class DataHandler:
 
     def load(self):
         self.df = pd.read_csv(self.csv_path) if os.path.isfile(self.csv_path) else pd.DataFrame(
-            columns=['video', 'start_time', 'end_time', 'start_frame', 'end_frame', 'movement', 'calc_date'])
+            columns=self.columns)
         self.df.dropna(inplace=True)
         self.idx = self.df.shape[0]
 
     def save(self):
-        print(os.getcwd())
         self.df.dropna(inplace=True)
         self.df.to_csv(self.csv_path, index=False)
 
@@ -69,8 +69,9 @@ class DataHandler:
         df = self.df[self.df['video'] == video_name]
         result = df[(df['start_time'] <= time) & (df['end_time'] >= time)]
         if result.shape[0] > 1:
+            # TODO: Check this case
             print('Error: multiple intersections?')
-        return None if result.empty else result.iloc[0]
+        return not result.empty, result
 
     def table_editor(self, root):
         window = tk.Toplevel(root)

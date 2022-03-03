@@ -8,7 +8,7 @@ import imutils
 class VideoPlayer:
     def __init__(self, video_path, video_sync, video_checked, skeleton, update_function, destroy_function):
         self.video_path = video_path
-        self.video_name = os.path.basename(video_path).split('.')[0]
+        self.video_name = os.path.basename(video_path)
         self.video_sync = video_sync
         self.video_checked = video_checked
         self.skeleton = skeleton
