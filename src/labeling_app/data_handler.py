@@ -12,8 +12,9 @@ from src.SkeletonTools.src.skeleton_tools.utils.constants import REAL_DATA_MOVEM
 class DataHandler:
     def __init__(self):
         Path('resources').mkdir(parents=True, exist_ok=True)
-        # self.csv_path = 'resources/22210917_ADOS_Clinical_120320_0938_4.csv'
-        self.csv_path = 'resources/labels.csv'
+        with open(r'Z:\Users\TalBarami\va_labels_root.txt', 'r') as f:
+            self.csv_path = f.read()
+        # self.csv_path = 'resources/labels.csv'
         self.columns = ['video', 'start_time', 'end_time', 'start_frame', 'end_frame', 'movement', 'calc_date', 'annotator']
         self.df = None
         self.idx = 0
