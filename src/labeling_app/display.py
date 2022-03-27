@@ -13,8 +13,10 @@ import PIL.Image
 import PIL.ImageTk
 import numpy as np
 
+from skeleton_tools.openpose_layouts.body import COCO_LAYOUT
+from skeleton_tools.skeleton_visualization.numpy_visualizer import MMPoseVisualizer
 from skeleton_tools.utils.constants import NET_NAME
-from skeleton_tools.utils.tools import read_json
+from skeleton_tools.utils.tools import read_json, read_pkl
 from src.labeling_app.data_handler import DataHandler
 from src.labeling_app.video_player import VideoPlayer
 from src.labeling_app.video_sync import VideoSync
@@ -26,7 +28,7 @@ class Display:
     def __init__(self):
         self.video_paths = None
         self.videos = []
-        self.skeletons_dir = 'D:/TalBarami/skeletons'
+        self.skeletons_dir = r'E:\ASDetector\workdir'
 
         self.data_handler = DataHandler()
         self.root = Tk()
@@ -36,6 +38,19 @@ class Display:
         self.video_seek_last_click = - np.infty
         self.video_sync = VideoSync(lambda: self.videos, self.set_play_button_name, lambda t: self.root.nametowidget('labelingPanel.manageFrame.videoFrame.seekFrame.scaleBar').set(t))
         self.selected_classes = {action: BooleanVar() for action in self.data_handler.movements}
+
+        def validate(action, index, value,
+                     prior_value, text, validation_type, trigger_type, widget_name):
+            # print(
+            #     f'action={action}, index={index}, value={value}, prior={prior_value}, text={text}, val_type={validation_type}, trig_type={trigger_type}, widget={widget_name}')
+            try:
+                if action == '1':
+                    float(value)
+                return True
+            except ValueError:
+                return False
+
+        self.vcmd = (self.root.register(validate), '%d', '%i', '%P', '%s', '%S', '%v', '%V', '%W')
 
     def run(self):
         self.init_file_browser()
@@ -110,13 +125,13 @@ class Display:
         # color_combobox.current(0)
         # color_combobox.pack(side=RIGHT, fill=X, expand=1, padx=20)
         # color_frame.pack(side=TOP, fill=X, expand=1)
-
-        # skeleton_var = IntVar()
-        # skeleton_var.set(0)
-        # skeleton_frame = Frame(data_frame)
-        # Label(skeleton_frame, text='Skeleton adjust:').pack(side=LEFT, fill=X, expand=0)
-        # Entry(skeleton_frame, textvariable=skeleton_var).pack(side=RIGHT, fill=X, expand=1, padx=20)
-        # skeleton_frame.pack(side=BOTTOM, fill=X, expand=1)
+        basename, ext = path.splitext(video_name)
+        self.skeleton_var = StringVar()
+        self.skeleton_var.set("-60" if ext.lower() == '.avi' else "0")
+        skeleton_frame = Frame(data_frame)
+        Label(skeleton_frame, text='Skeleton adjust:').pack(side=LEFT, fill=X, expand=0)
+        Entry(skeleton_frame, textvariable=self.skeleton_var).pack(side=RIGHT, fill=X, expand=1, padx=20)
+        skeleton_frame.pack(side=BOTTOM, fill=X, expand=1)
 
         time_var = DoubleVar()
         Label(data_frame, textvariable=time_var, width=10).pack(side=TOP)
@@ -128,17 +143,19 @@ class Display:
         Checkbutton(data_frame, text='Include Video', variable=include_video).pack(side=TOP)
 
         data_frame.pack(side=LEFT, fill=BOTH, expand=1)
-
-        file_path = path.join(self.skeletons_dir, f'{path.splitext(video_name)[0]}.json')
-        skeleton_json = read_json(file_path) if path.isfile(file_path) else None
+        file_path = path.join(self.skeletons_dir, basename, f'{basename}.pkl')
+        skeleton_pkl = read_pkl(file_path) if path.isfile(file_path) else None
+        vis = MMPoseVisualizer(COCO_LAYOUT)
 
         def update_function(frame, frame_number, current_time, duration, skeleton, video_width, video_height):
             if self.video_sync.stop_thread:
                 return
-            # if not self.video_sync.with_image.get():
-            #     frame *= 0
-            # if skeleton_json and self.video_sync.with_skeleton:
-            #     visualize_frame_pre_processed(skeleton, frame, int(frame_number + skeleton_var.get()), width=video_width, height=video_height)
+            if not self.video_sync.with_image.get():
+                frame *= 0
+            if skeleton_pkl and self.video_sync.with_skeleton.get():
+                i = int(frame_number) + self.get_skeleton_adjust()
+                if i >= 0:
+                    frame = vis.draw_skeletons(frame, skeleton['keypoint'][:, i, :, :] * np.array((video_width, video_height)), skeleton_pkl['keypoint_score'][:, i, :], (video_width, video_height))
 
             time = np.round(current_time, 1)
             duration = np.round(duration, 1)
@@ -167,7 +184,7 @@ class Display:
 
         return VideoPlayer(video_path, self.video_sync,
                            video_checked=lambda: include_video.get(),
-                           skeleton=skeleton_json,
+                           skeleton=skeleton_pkl,
                            update_function=update_function,
                            destroy_function=destroy_function)
 
@@ -209,30 +226,19 @@ class Display:
 
     def init_data_input_frame(self, panel):
 
-        def validate(action, index, value,
-                     prior_value, text, validation_type, trigger_type, widget_name):
-            print(
-                f'action={action}, index={index}, value={value}, prior={prior_value}, text={text}, val_type={validation_type}, trig_type={trigger_type}, widget={widget_name}')
-            try:
-                if action == '1':
-                    float(value)
-                return True
-            except ValueError:
-                return False
+
         dataInputFrame = Frame(panel, name='dataInputFrame')
-        vcmd = (self.root.register(validate),
-                '%d', '%i', '%P', '%s', '%S', '%v', '%V', '%W')
         locationFrame = Frame(dataInputFrame, name='locationFrame')
         startFrame = Frame(locationFrame, name='startFrame')
         Label(startFrame, name='startLabel', text='Start:').pack(side=LEFT, fill=X, padx=51)
-        Entry(startFrame, name='startEntry', validate='key', validatecommand=vcmd).pack(side=LEFT, fill=X, ipadx=70,
+        Entry(startFrame, name='startEntry', validate='key', validatecommand=self.vcmd).pack(side=LEFT, fill=X, ipadx=70,
                                                                                         expand=0)
         startFrame.pack(fill=BOTH, expand=1)
         Frame(locationFrame).pack(pady=5)
 
         endFrame = Frame(locationFrame, name='endFrame')
         Label(endFrame, name='endLabel', text='End:').pack(side=LEFT, fill=X, padx=53)
-        Entry(endFrame, name='endEntry', validate='key', validatecommand=vcmd).pack(side=LEFT, fill=X, ipadx=70, expand=0)
+        Entry(endFrame, name='endEntry', validate='key', validatecommand=self.vcmd).pack(side=LEFT, fill=X, ipadx=70, expand=0)
         endFrame.pack(fill=BOTH, expand=1)
         Frame(locationFrame).pack(pady=5)
         locationFrame.pack(side=LEFT, fill=BOTH)
@@ -289,14 +295,14 @@ class Display:
 
         buttonsFrame = Frame(frame, name='buttonsFrame')
 
-        # checkboxFrame = Frame(buttonsFrame)
-        # self.video_sync.with_skeleton = BooleanVar()
-        # self.video_sync.with_skeleton.set(True)
-        # Checkbutton(checkboxFrame, text='Display Skeleton', variable=self.video_sync.with_skeleton).pack(side=LEFT, expand=1)
-        # self.video_sync.with_image = BooleanVar()
-        # self.video_sync.with_image.set(True)
-        # Checkbutton(checkboxFrame, text='Display Image', variable=self.video_sync.with_image).pack(side=LEFT, expand=1)
-        # checkboxFrame.pack(side=TOP, expand=1)
+        checkboxFrame = Frame(buttonsFrame)
+        self.video_sync.with_skeleton = BooleanVar()
+        self.video_sync.with_skeleton.set(True)
+        Checkbutton(checkboxFrame, text='Display Skeleton', variable=self.video_sync.with_skeleton).pack(side=LEFT, expand=1)
+        self.video_sync.with_image = BooleanVar()
+        self.video_sync.with_image.set(True)
+        Checkbutton(checkboxFrame, text='Display Image', variable=self.video_sync.with_image).pack(side=LEFT, expand=1)
+        checkboxFrame.pack(side=TOP, expand=1)
         Frame(buttonsFrame).pack(pady=5)
         Button(buttonsFrame, name='addButton', text='Add Records', state=DISABLED, command=add_button_click).pack(side=TOP, expand=1)
         Frame(buttonsFrame).pack(pady=5)
@@ -328,6 +334,12 @@ class Display:
 
     def get_current_video_time(self):
         return np.array([v.get_time_sec() for v in self.videos]).min()
+
+    def get_skeleton_adjust(self):
+        v = self.skeleton_var.get()
+        if v.strip('-').isnumeric():
+            return int(v)
+        return 0
 
     def seek_record(self, seek_function):
         def set_text(entry, text):
