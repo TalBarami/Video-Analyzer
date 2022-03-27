@@ -2,17 +2,18 @@ import tkinter as tk
 from pathlib import Path
 from tkinter import messagebox
 import os
+from os import path
 
 import pandas as pd
 from pandastable import Table
 pd.set_option('display.expand_frame_repr', False)
-from src.SkeletonTools.src.skeleton_tools.utils.constants import REAL_DATA_MOVEMENTS
+from src.SkeletonTools.src.skeleton_tools.utils.constants import REAL_DATA_MOVEMENTS, REMOTE_STORAGE
 
 
 class DataHandler:
     def __init__(self):
         Path('resources').mkdir(parents=True, exist_ok=True)
-        with open(r'Z:\Users\TalBarami\va_labels_root.txt', 'r') as f:
+        with open(path.join(REMOTE_STORAGE, r'Users\TalBarami\va_labels_root.txt'), 'r') as f:
             self.csv_path = f.read()
         # self.csv_path = 'resources/labels.csv'
         self.columns = ['video', 'start_time', 'end_time', 'start_frame', 'end_frame', 'movement', 'calc_date', 'annotator']
