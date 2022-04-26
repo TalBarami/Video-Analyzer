@@ -26,7 +26,8 @@ class VideoPlayer:
         self.duration = self.frames_count / self.fps
 
         self.width, self.height = self.calc_resolution()
-        self.skeleton['keypoint'] /= np.array(self.skeleton['original_shape'])
+        if self.skeleton:
+            self.skeleton['keypoint'] /= np.array(self.skeleton['original_shape'])
 
         print(f'Playing {self.video_path} on {self.fps} fps, total {self.frames_count} frames, duration {self.duration}')
 

@@ -6,12 +6,13 @@ from os import path
 
 import pandas as pd
 from pandastable import Table
+
 pd.set_option('display.expand_frame_repr', False)
 from src.SkeletonTools.src.skeleton_tools.utils.constants import REAL_DATA_MOVEMENTS, REMOTE_STORAGE
 
 
 class DataHandler:
-    def __init__(self):
+    def __init__(self, skeleton_adjust=None):
         Path('resources').mkdir(parents=True, exist_ok=True)
         with open(path.join(REMOTE_STORAGE, r'Users\TalBarami\va_labels_root.txt'), 'r') as f:
             self.csv_path = f.read()
@@ -20,10 +21,23 @@ class DataHandler:
         self.df = None
         self.idx = 0
         self.movements = REAL_DATA_MOVEMENTS[:-1]
+        self.skeleton_adjust = skeleton_adjust if skeleton_adjust else lambda: 0
         # self.colors = ['Red', 'Green', 'Blue', 'Yellow', 'Purple', 'Cyan', 'Gray', 'Brown']
         # self.color_items = ['None', 'Unidentified'] + self.colors
 
         self.load()
+
+    def dataframe(self):
+        adj, fps = self.skeleton_adjust()
+        adj = -adj
+        fps = fps[0]
+        df = self.df.copy()
+        df['start_frame'] += adj
+        df['end_frame'] += adj
+        df['start_time'] += adj / fps
+        df['end_time'] += adj / fps
+
+        return df
 
     def add(self, videos, start, end, movements):
         if len(videos) < 1:
@@ -68,7 +82,8 @@ class DataHandler:
         self.df.to_csv(self.csv_path, index=False)
 
     def intersect(self, video_name, time):
-        df = self.df[self.df['video'] == video_name]
+        df = self.dataframe()
+        df = df[df['video'] == video_name]
         result = df[(df['start_time'] <= time) & (df['end_time'] >= time)]
         if result.shape[0] > 1:
             # TODO: Check this case
@@ -100,7 +115,7 @@ class DataHandler:
         return self.seek_record(videos, lambda df: df['end_time'] < time, lambda df: df['start_time'].max())
 
     def seek_record(self, videos, direction_func, distance_func):
-        df = self.df
+        df = self.dataframe()
         df = df[df['video'].isin([v.video_name for v in videos]) & direction_func(df)]
 
         result = None

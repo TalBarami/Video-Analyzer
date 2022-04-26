@@ -30,7 +30,7 @@ class Display:
         self.videos = []
         self.skeletons_dir = r'E:\ASDetector\workdir'
 
-        self.data_handler = DataHandler()
+        self.data_handler = DataHandler(skeleton_adjust=lambda: self.get_skeleton_adjust(fps=True))
         self.root = Tk()
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
         self.root.title('Annotations')
@@ -335,11 +335,16 @@ class Display:
     def get_current_video_time(self):
         return np.array([v.get_time_sec() for v in self.videos]).min()
 
-    def get_skeleton_adjust(self):
+    def get_skeleton_adjust(self, fps=False):
         v = self.skeleton_var.get()
+        r = 0
         if v.strip('-').isnumeric():
-            return int(v)
-        return 0
+            r = int(v)
+
+        if fps:
+            return r, [v.fps for v in self.videos]
+        else:
+            return r
 
     def seek_record(self, seek_function):
         def set_text(entry, text):
