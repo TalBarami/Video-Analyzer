@@ -3,40 +3,45 @@ from pathlib import Path
 from tkinter import messagebox
 import os
 from os import path
+import itertools as it
 
 import pandas as pd
 from pandastable import Table
 
 pd.set_option('display.expand_frame_repr', False)
-from src.SkeletonTools.src.skeleton_tools.utils.constants import REAL_DATA_MOVEMENTS, REMOTE_STORAGE
+from src.SkeletonTools.src.skeleton_tools.utils.constants import REAL_DATA_MOVEMENTS, REMOTE_STORAGE, NET_NAME
 
 
 class DataHandler:
-    def __init__(self, skeleton_adjust=None):
+    def __init__(self, videos, skeleton_adjust=None):
         Path('resources').mkdir(parents=True, exist_ok=True)
         with open(path.join(REMOTE_STORAGE, r'Users\TalBarami\va_labels_root.txt'), 'r') as f:
             self.csv_path = f.read()
         # self.csv_path = 'resources/labels.csv'
         self.columns = ['video', 'start_time', 'end_time', 'start_frame', 'end_frame', 'movement', 'calc_date', 'annotator']
         self.df = None
-        self.idx = 0
         self.movements = REAL_DATA_MOVEMENTS[:-1]
+        self.videos = videos
         self.skeleton_adjust = skeleton_adjust if skeleton_adjust else lambda: 0
         # self.colors = ['Red', 'Green', 'Blue', 'Yellow', 'Purple', 'Cyan', 'Gray', 'Brown']
         # self.color_items = ['None', 'Unidentified'] + self.colors
 
         self.load()
 
-    def dataframe(self):
-        adj, fps = self.skeleton_adjust()
-        adj = -adj
-        fps = fps[0]
-        df = self.df.copy()
-        df['start_frame'] += adj
-        df['end_frame'] += adj
-        df['start_time'] += adj / fps
-        df['end_time'] += adj / fps
+    def adjust_row(self, row):
+        if row['annotator'] == NET_NAME:
+            adj, fps = self.skeleton_adjust()
+            adj = -adj
+            fps = fps[0]
+            row['start_frame'] += adj
+            row['end_frame'] += adj
+            row['start_time'] += adj / fps
+            row['end_time'] += adj / fps
+        return row
 
+    def dataframe(self):
+        df = self.df[self.df['video'].isin(self.videos())].copy()
+        df = df.apply(self.adjust_row, axis=1)
         return df
 
     def add(self, videos, start, end, movements):
@@ -57,8 +62,12 @@ class DataHandler:
         videos = [v for v in videos if v.video_checked()]
         calc_date = pd.to_datetime('now')
         for v in videos:
-            self.df.loc[self.idx] = [v.video_name, float(start), float(end), v.time_to_frame(start), v.time_to_frame(end), movements, calc_date]
-            self.idx += 1
+            vn, st, et, sf, ef, ms, cd, ann = v.video_name, float(start), float(end), v.time_to_frame(start), v.time_to_frame(end), movements, calc_date, 'Human'
+            sub_df = self.df[(self.df['video'] == vn) & (self.df['start_time'] == st) & (self.df['end_time'] == et)]
+            if not sub_df.empty:
+                ms = list(it.chain(*sub_df['movement'].tolist())) + movements
+                self.df = self.df.drop(sub_df.index)
+            self.df.loc[self.df.index.max() + 1] = [vn, st, et, sf, ef, ms, cd, ann]
         added = [v.video_name for v in videos]
         self.save()
         return added
@@ -72,13 +81,12 @@ class DataHandler:
         return names
 
     def load(self):
-        self.df = pd.read_csv(self.csv_path) if os.path.isfile(self.csv_path) else pd.DataFrame(
-            columns=self.columns)
-        self.df.dropna(inplace=True)
-        self.idx = self.df.shape[0]
+        self.df = pd.read_csv(self.csv_path) if os.path.isfile(self.csv_path) else pd.DataFrame(columns=self.columns)
+        self.df['movement'] = self.df['movement'].apply(lambda m: eval(m))
+        self.df.dropna(inplace=True, subset=self.columns)
 
     def save(self):
-        self.df.dropna(inplace=True)
+        self.df.dropna(inplace=True, subset=self.columns)
         self.df.to_csv(self.csv_path, index=False)
 
     def intersect(self, video_name, time):
@@ -88,7 +96,13 @@ class DataHandler:
         if result.shape[0] > 1:
             # TODO: Check this case
             print('Error: multiple intersections?')
-        return not result.empty, result
+        if not result.empty:
+            out = {
+                'movement': set(it.chain.from_iterable(result['movement'])),
+                'annotator': result['annotator'].tolist()
+            }
+            return True, out
+        return False, None
 
     def table_editor(self, root):
         window = tk.Toplevel(root)
@@ -123,7 +137,7 @@ class DataHandler:
             start_time = distance_func(df)
             df = df[df['start_time'] == start_time]
             end_time = df['end_time'].iloc[0]
-            label = df['movement'].unique().tolist()
+            label = set(it.chain.from_iterable(df['movement'].tolist()))
             result = (start_time, end_time, label)
 
         return result

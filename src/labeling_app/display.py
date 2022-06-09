@@ -30,7 +30,7 @@ class Display:
         self.videos = []
         self.skeletons_dir = r'E:\ASDetector\workdir'
 
-        self.data_handler = DataHandler(skeleton_adjust=lambda: self.get_skeleton_adjust(fps=True))
+        self.data_handler = DataHandler(videos=lambda: [v.video_name for v in self.videos], skeleton_adjust=lambda: self.get_skeleton_adjust(fps=True))
         self.root = Tk()
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
         self.root.title('Annotations')
