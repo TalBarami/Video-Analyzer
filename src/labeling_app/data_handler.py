@@ -81,7 +81,7 @@ class DataHandler:
         return names
 
     def load(self):
-        self.df = pd.read_csv(self.csv_path) if os.path.isfile(self.csv_path) else pd.DataFrame(columns=self.columns)
+        self.df = pd.read_csv(self.csv_path)[self.columns] if os.path.isfile(self.csv_path) else pd.DataFrame(columns=self.columns)
         self.df['movement'] = self.df['movement'].apply(lambda m: eval(m))
         self.df.dropna(inplace=True, subset=self.columns)
 
