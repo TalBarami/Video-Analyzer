@@ -6,7 +6,7 @@ import imutils
 
 
 class VideoPlayer:
-    def __init__(self, video_path, video_sync, video_checked, skeleton, update_function, destroy_function):
+    def __init__(self, video_path, video_sync, video_checked, skeleton, update_function, destroy_function, n_videos):
         self.video_path = video_path
         self.video_name = os.path.basename(video_path)
         self.video_sync = video_sync
@@ -14,6 +14,7 @@ class VideoPlayer:
         self.skeleton = skeleton
         self.update_function = update_function
         self.destroy_function = destroy_function
+        self.n_videos = n_videos
 
         self.lock = threading.Lock()
         self.cap = cv2.VideoCapture(self.video_path)
@@ -28,11 +29,12 @@ class VideoPlayer:
         self.width, self.height = self.calc_resolution()
         if self.skeleton:
             self.skeleton['keypoint'] /= np.array(self.skeleton['original_shape'])
+            self.skeleton['keypoint'] *= np.array((self.width, self.height))
 
         print(f'Playing {self.video_path} on {self.fps} fps, total {self.frames_count} frames, duration {self.duration}')
 
     def calc_resolution(self):
-        max_width = max_height = 400
+        max_width = max_height = 800 - 100 * (self.n_videos - 1)
 
         width = self.cap.get(cv2.CAP_PROP_FRAME_WIDTH)
         height = self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
@@ -58,7 +60,7 @@ class VideoPlayer:
             # cv2.resize(frame, (self.width, self.height))
             frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
             frame = imutils.resize(frame, self.width, self.height)
-            self.update_function(frame, self.cap.get(cv2.CAP_PROP_POS_FRAMES), self.get_time_sec(), self.duration, self.skeleton, self.width, self.height)
+            self.update_function(frame, self.cap.get(cv2.CAP_PROP_POS_FRAMES), self.get_time_sec(), self.duration, self.skeleton)
 
     def read_frame(self):
         if self.cap.isOpened():

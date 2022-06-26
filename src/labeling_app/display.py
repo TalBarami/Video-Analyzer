@@ -15,7 +15,7 @@ import numpy as np
 
 from skeleton_tools.openpose_layouts.body import COCO_LAYOUT
 from skeleton_tools.skeleton_visualization.numpy_visualizer import MMPoseVisualizer
-from skeleton_tools.utils.constants import NET_NAME
+from skeleton_tools.utils.constants import NET_NAME, REMOTE_STORAGE
 from skeleton_tools.utils.tools import read_json, read_pkl
 from src.labeling_app.data_handler import DataHandler
 from src.labeling_app.video_player import VideoPlayer
@@ -28,7 +28,8 @@ class Display:
     def __init__(self):
         self.video_paths = None
         self.videos = []
-        self.skeletons_dir = r'E:\ASDetector\workdir'
+        with open(path.join(REMOTE_STORAGE, r'Users\TalBarami\va_workdir.txt'), 'r') as f:
+            self.skeletons_dir = f.read()
 
         self.data_handler = DataHandler(videos=lambda: [v.video_name for v in self.videos], skeleton_adjust=lambda: self.get_skeleton_adjust(fps=True))
         self.root = Tk()
@@ -93,6 +94,7 @@ class Display:
         self.video_sync.is_playing = False
         self.videos = [self.create_video_player(v, i) for i, v in enumerate(self.video_paths)]
         self.video_sync.start()
+        self.data_handler.load_current_dataframe()
 
         lengths = [v.duration for v in self.videos]
         length = max(lengths) if lengths else 0
@@ -147,7 +149,7 @@ class Display:
         skeleton_pkl = read_pkl(file_path) if path.isfile(file_path) else None
         vis = MMPoseVisualizer(COCO_LAYOUT)
 
-        def update_function(frame, frame_number, current_time, duration, skeleton, video_width, video_height):
+        def update_function(frame, frame_number, current_time, duration, skeleton):
             if self.video_sync.stop_thread:
                 return
             if not self.video_sync.with_image.get():
@@ -155,7 +157,7 @@ class Display:
             if skeleton_pkl and self.video_sync.with_skeleton.get():
                 i = int(frame_number) + self.get_skeleton_adjust()
                 if i >= 0:
-                    frame = vis.draw_skeletons(frame, skeleton['keypoint'][:, i, :, :] * np.array((video_width, video_height)), skeleton_pkl['keypoint_score'][:, i, :], (video_width, video_height))
+                    frame = vis.draw_skeletons(frame, skeleton['keypoint'][:, i, :, :], skeleton_pkl['keypoint_score'][:, i, :])
 
             time = np.round(current_time, 1)
             duration = np.round(duration, 1)
@@ -186,7 +188,8 @@ class Display:
                            video_checked=lambda: include_video.get(),
                            skeleton=skeleton_pkl,
                            update_function=update_function,
-                           destroy_function=destroy_function)
+                           destroy_function=destroy_function,
+                           n_videos=len(self.video_paths))
 
     def set_play_button_name(self, value=None):
         self.root.nametowidget('mediaPanel.playButton').config(text=value if value else 'Pause' if self.video_sync.is_playing else 'Play')
