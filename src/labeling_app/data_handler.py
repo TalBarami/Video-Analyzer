@@ -9,7 +9,7 @@ import pandas as pd
 from pandastable import Table
 
 pd.set_option('display.expand_frame_repr', False)
-from src.SkeletonTools.src.skeleton_tools.utils.constants import REAL_DATA_MOVEMENTS, REMOTE_STORAGE, NET_NAME
+from skeleton_tools.utils.constants import REAL_DATA_MOVEMENTS, REMOTE_STORAGE, NET_NAME
 
 
 class DataHandler:

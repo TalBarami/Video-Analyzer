@@ -83,7 +83,7 @@ class Display:
             if b:
                 self.load_videos()
 
-        Listbox(panel, name='videosListbox', width=80, height=10).pack(fill=BOTH, expand=1)
+        Listbox(panel, name='videosListbox', width=80, height=4).pack(fill=BOTH, expand=1)
 
         Button(panel, name='browseButton', text="Browse", command=lambda: browse_button_click()).pack(expand=1)
         panel.pack(side=TOP, fill=BOTH, expand=1)
@@ -129,10 +129,15 @@ class Display:
         # color_frame.pack(side=TOP, fill=X, expand=1)
         basename, ext = path.splitext(video_name)
         self.skeleton_var = StringVar()
-        self.skeleton_var.set("-60" if ext.lower() == '.avi' else "0")
+        self.skeleton_var.set("0")
         skeleton_frame = Frame(data_frame)
         Label(skeleton_frame, text='Skeleton adjust:').pack(side=LEFT, fill=X, expand=0)
-        Entry(skeleton_frame, textvariable=self.skeleton_var).pack(side=RIGHT, fill=X, expand=1, padx=20)
+
+        def validate_skeleton():
+            self.data_handler.load_current_dataframe()
+            return True
+
+        Entry(skeleton_frame, textvariable=self.skeleton_var, validate='focusout', validatecommand=validate_skeleton).pack(side=RIGHT, fill=X, expand=1, padx=20)
         skeleton_frame.pack(side=BOTTOM, fill=X, expand=1)
 
         time_var = DoubleVar()
