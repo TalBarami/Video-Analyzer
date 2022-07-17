@@ -162,7 +162,7 @@ class Display:
             if skeleton_pkl and self.video_sync.with_skeleton.get():
                 i = int(frame_number) + self.get_skeleton_adjust()
                 if i >= 0:
-                    frame = vis.draw_skeletons(frame, skeleton['keypoint'][:, i, :, :], skeleton_pkl['keypoint_score'][:, i, :])
+                    frame = vis.draw_skeletons(frame, skeleton['keypoint'][:, i, :, :], skeleton_pkl['keypoint_score'][:, i, :], child_id=(skeleton_pkl['child_ids'][i] if 'child_ids' in skeleton_pkl.keys() else None))
 
             time = np.round(current_time, 1)
             duration = np.round(duration, 1)
@@ -436,4 +436,3 @@ if __name__ == '__main__':
     running = threading.enumerate()
     print(running)
     print('Exiting')
-    sys.exit(0)
