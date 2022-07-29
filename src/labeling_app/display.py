@@ -40,8 +40,7 @@ class Display:
         self.video_sync = VideoSync(lambda: self.videos, self.set_play_button_name, lambda t: self.root.nametowidget('labelingPanel.manageFrame.videoFrame.seekFrame.scaleBar').set(t))
         self.selected_classes = {action: BooleanVar() for action in self.data_handler.movements}
 
-        def validate(action, index, value,
-                     prior_value, text, validation_type, trigger_type, widget_name):
+        def validate(action, index, value, prior_value, text, validation_type, trigger_type, widget_name):
             # print(
             #     f'action={action}, index={index}, value={value}, prior={prior_value}, text={text}, val_type={validation_type}, trig_type={trigger_type}, widget={widget_name}')
             try:
@@ -105,7 +104,7 @@ class Display:
         videos_frame = self.root.nametowidget('mediaPanel.videosFrame')
 
         main_frame = Frame(videos_frame, name=f'video_{idx}', highlightthickness=2)
-        main_frame.pack(side=LEFT, fill=BOTH, expand=1)
+        main_frame.pack(side=LEFT, fill=BOTH, expand=0)
 
         header_frame = Frame(main_frame)
         name_label = Label(header_frame, text=video_name, width=60)
