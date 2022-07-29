@@ -37,7 +37,7 @@ class Display:
         self.root.title('Annotations')
         # self.root.iconbitmap('resources/annotations.ico')
         self.video_seek_last_click = - np.infty
-        self.video_sync = VideoSync(lambda: self.videos, self.set_play_button_name, lambda t: self.root.nametowidget('labelingPanel.manageFrame.videoFrame.seekFrame.scaleBar').set(t))
+        self.video_sync = VideoSync(lambda: self.videos, self.set_play_button_name, self.set_scale_bar)
         self.selected_classes = {action: BooleanVar() for action in self.data_handler.movements}
 
         def validate(action, index, value, prior_value, text, validation_type, trigger_type, widget_name):
@@ -51,6 +51,9 @@ class Display:
                 return False
 
         self.vcmd = (self.root.register(validate), '%d', '%i', '%P', '%s', '%S', '%v', '%V', '%W')
+
+    def set_scale_bar(self, t):
+        self.root.nametowidget('labelingPanel.manageFrame.videoFrame.seekFrame.scaleBar').set(t)
 
     def run(self):
         self.init_file_browser()
