@@ -154,6 +154,8 @@ class Display:
         data_frame.pack(side=LEFT, fill=BOTH, expand=1)
         file_path = path.join(self.skeletons_dir, basename, f'{basename}.pkl')
         skeleton_pkl = read_pkl(file_path) if path.isfile(file_path) else None
+        if 'adjust' in skeleton_pkl.keys():
+            self.skeleton_var.set(str(skeleton_pkl['adjust']))
         vis = MMPoseVisualizer(COCO_LAYOUT)
 
         def update_function(frame, frame_number, current_time, duration, skeleton):
