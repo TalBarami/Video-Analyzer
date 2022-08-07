@@ -6,12 +6,13 @@ import imutils
 
 
 class VideoPlayer:
-    def __init__(self, video_path, video_sync, video_checked, skeleton, update_function, destroy_function, n_videos):
+    def __init__(self, video_path, video_sync, video_checked, skeleton, skeleton_adjust, update_function, destroy_function, n_videos):
         self.video_path = video_path
         self.video_name = os.path.basename(video_path)
         self.video_sync = video_sync
         self.video_checked = video_checked
         self.skeleton = skeleton
+        self.skeleton_adjust = skeleton_adjust
         self.update_function = update_function
         self.destroy_function = destroy_function
         self.n_videos = n_videos

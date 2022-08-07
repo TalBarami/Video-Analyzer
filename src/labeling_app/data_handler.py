@@ -13,7 +13,7 @@ from skeleton_tools.utils.constants import REAL_DATA_MOVEMENTS, REMOTE_STORAGE, 
 
 
 class DataHandler:
-    def __init__(self, videos, skeleton_adjust=None):
+    def __init__(self, videos):
         Path('resources').mkdir(parents=True, exist_ok=True)
         with open(path.join(REMOTE_STORAGE, r'Users\TalBarami\va_labels_root.txt'), 'r') as f:
             self.csv_path = f.read()
@@ -22,17 +22,14 @@ class DataHandler:
         self.df = None
         self.movements = REAL_DATA_MOVEMENTS[:-1]
         self.videos = videos
-        self.skeleton_adjust = skeleton_adjust if skeleton_adjust else lambda: 0
         # self.colors = ['Red', 'Green', 'Blue', 'Yellow', 'Purple', 'Cyan', 'Gray', 'Brown']
         # self.color_items = ['None', 'Unidentified'] + self.colors
 
         self.load()
 
-    def adjust_row(self, row):
+    def adjust_row(self, row, adj, fps):
         if row['annotator'] == NET_NAME:
-            adj, fps = self.skeleton_adjust()
             adj = -adj
-            fps = fps[0]
             row['start_frame'] += adj
             row['end_frame'] += adj
             row['start_time'] += adj / fps
@@ -40,8 +37,11 @@ class DataHandler:
         return row
 
     def load_current_dataframe(self):
-        self.df = self._df[self._df['video'].isin(self.videos())].copy()
-        self.df = self.df.apply(self.adjust_row, axis=1)
+        videos = {v.video_name: (v.skeleton_adjust(), v.fps) for v in self.videos()}
+        dfs = [self._df[self._df['video'] == v].copy() for v in videos.keys()]
+        for i, df in enumerate(dfs):
+            dfs[i] = df.apply(lambda row: self.adjust_row(row, *videos[row['video']]), axis=1)
+        self.df = pd.concat(dfs) if len(dfs) > 0 else pd.DataFrame(self.columns)
 
     def add(self, videos, start, end, movements):
         if len(videos) < 1:
@@ -83,7 +83,7 @@ class DataHandler:
     def load(self):
         df = pd.read_csv(self.csv_path)[self.columns] if os.path.isfile(self.csv_path) else pd.DataFrame(columns=self.columns)
         df = df[df['movement'] != 'NoAction']
-        # df['movement'] = df['movement'].apply(lambda m: eval(m))
+        df['movement'] = df['movement'].apply(self.fix_label)
         df.dropna(inplace=True, subset=self.columns)
         self._df = df
 
@@ -130,6 +130,12 @@ class DataHandler:
 
     def prev_record(self, videos, time):
         return self.seek_record(videos, lambda df: df['end_time'] < time, lambda df: df['start_time'].max())
+
+    def fix_label(self, movement):
+        if type(movement) == str:
+            return eval(movement)
+        else:
+            return movement
 
     def seek_record(self, videos, direction_func, distance_func):
         df = self.df

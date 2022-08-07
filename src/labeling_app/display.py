@@ -31,7 +31,7 @@ class Display:
         with open(path.join(REMOTE_STORAGE, r'Users\TalBarami\va_workdir.txt'), 'r') as f:
             self.skeletons_dir = f.read()
 
-        self.data_handler = DataHandler(videos=lambda: [v.video_name for v in self.videos], skeleton_adjust=lambda: self.get_skeleton_adjust(fps=True))
+        self.data_handler = DataHandler(videos=lambda: self.videos)
         self.root = Tk()
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
         self.root.title('Annotations')
@@ -130,8 +130,8 @@ class Display:
         # color_combobox.pack(side=RIGHT, fill=X, expand=1, padx=20)
         # color_frame.pack(side=TOP, fill=X, expand=1)
         basename, ext = path.splitext(video_name)
-        self.skeleton_var = StringVar()
-        self.skeleton_var.set("0")
+        skeleton_var = StringVar()
+        skeleton_var.set("0")
         skeleton_frame = Frame(data_frame)
         Label(skeleton_frame, text='Skeleton adjust:').pack(side=LEFT, fill=X, expand=0)
 
@@ -139,7 +139,14 @@ class Display:
             self.data_handler.load_current_dataframe()
             return True
 
-        Entry(skeleton_frame, textvariable=self.skeleton_var, validate='focusout', validatecommand=validate_skeleton).pack(side=RIGHT, fill=X, expand=1, padx=20)
+        def get_skeleton_adjust():
+            v = skeleton_var.get()
+            r = 0
+            if v.strip('-').isnumeric():
+                r = int(v)
+            return r
+
+        Entry(skeleton_frame, textvariable=skeleton_var, validate='focusout', validatecommand=validate_skeleton).pack(side=RIGHT, fill=X, expand=1, padx=20)
         skeleton_frame.pack(side=BOTTOM, fill=X, expand=1)
 
         time_var = DoubleVar()
@@ -154,8 +161,8 @@ class Display:
         data_frame.pack(side=LEFT, fill=BOTH, expand=1)
         file_path = path.join(self.skeletons_dir, basename, f'{basename}.pkl')
         skeleton_pkl = read_pkl(file_path) if path.isfile(file_path) else None
-        if 'adjust' in skeleton_pkl.keys():
-            self.skeleton_var.set(str(skeleton_pkl['adjust']))
+        if skeleton_pkl is not None and 'adjust' in skeleton_pkl.keys():
+            skeleton_var.set(str(skeleton_pkl['adjust']))
         vis = MMPoseVisualizer(COCO_LAYOUT)
 
         def update_function(frame, frame_number, current_time, duration, skeleton):
@@ -164,7 +171,7 @@ class Display:
             if not self.video_sync.with_image.get():
                 frame *= 0
             if skeleton_pkl and self.video_sync.with_skeleton.get():
-                i = int(frame_number) + self.get_skeleton_adjust()
+                i = int(frame_number) + get_skeleton_adjust()
                 if i >= 0:
                     frame = vis.draw_skeletons(frame, skeleton['keypoint'][:, i, :, :], skeleton_pkl['keypoint_score'][:, i, :], child_id=(skeleton_pkl['child_ids'][i] if 'child_ids' in skeleton_pkl.keys() else None))
 
@@ -196,6 +203,7 @@ class Display:
         return VideoPlayer(video_path, self.video_sync,
                            video_checked=lambda: include_video.get(),
                            skeleton=skeleton_pkl,
+                           skeleton_adjust=get_skeleton_adjust,
                            update_function=update_function,
                            destroy_function=destroy_function,
                            n_videos=len(self.video_paths))
@@ -346,17 +354,6 @@ class Display:
 
     def get_current_video_time(self):
         return np.array([v.get_time_sec() for v in self.videos]).min()
-
-    def get_skeleton_adjust(self, fps=False):
-        v = self.skeleton_var.get()
-        r = 0
-        if v.strip('-').isnumeric():
-            r = int(v)
-
-        if fps:
-            return r, [v.fps for v in self.videos]
-        else:
-            return r
 
     def seek_record(self, seek_function):
         def set_text(entry, text):
