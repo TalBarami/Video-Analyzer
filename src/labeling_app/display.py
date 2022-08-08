@@ -162,7 +162,7 @@ class Display:
         file_path = path.join(self.skeletons_dir, basename, f'{basename}.pkl')
         skeleton_pkl = read_pkl(file_path) if path.isfile(file_path) else None
         if skeleton_pkl is not None and 'adjust' in skeleton_pkl.keys():
-            skeleton_var.set(str(skeleton_pkl['adjust']))
+            skeleton_var.set(str(0 if skeleton_pkl['adjust'] < 12 else skeleton_pkl['adjust']))
         vis = MMPoseVisualizer(COCO_LAYOUT)
 
         def update_function(frame, frame_number, current_time, duration, skeleton):
@@ -173,7 +173,11 @@ class Display:
             if skeleton_pkl and self.video_sync.with_skeleton.get():
                 i = int(frame_number) + get_skeleton_adjust()
                 if i >= 0:
-                    frame = vis.draw_skeletons(frame, skeleton['keypoint'][:, i, :, :], skeleton_pkl['keypoint_score'][:, i, :], child_id=(skeleton_pkl['child_ids'][i] if 'child_ids' in skeleton_pkl.keys() else None))
+                    frame = vis.draw_skeletons(frame,
+                                               skeleton['keypoint'][:, i, :, :],
+                                               skeleton_pkl['keypoint_score'][:, i, :],
+                                               child_id=(skeleton_pkl['child_ids'][i] if 'child_ids' in skeleton_pkl.keys() else None),
+                                               thickness=2)
 
             time = np.round(current_time, 1)
             duration = np.round(duration, 1)

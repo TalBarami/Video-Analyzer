@@ -133,7 +133,11 @@ class DataHandler:
 
     def fix_label(self, movement):
         if type(movement) == str:
-            return eval(movement)
+            try:
+                m = eval(movement)
+            except NameError:
+                m = movement
+            return m
         else:
             return movement
 
