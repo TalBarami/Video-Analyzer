@@ -17,9 +17,9 @@ from skeleton_tools.openpose_layouts.body import COCO_LAYOUT
 from skeleton_tools.skeleton_visualization.numpy_visualizer import MMPoseVisualizer
 from skeleton_tools.utils.constants import NET_NAME, REMOTE_STORAGE
 from skeleton_tools.utils.tools import read_json, read_pkl
-from src.labeling_app.data_handler import DataHandler
-from src.labeling_app.video_player import VideoPlayer
-from src.labeling_app.video_sync import VideoSync
+from src.video_analyzer.data_handler import DataHandler
+from src.video_analyzer.video_player import VideoPlayer
+from src.video_analyzer.video_sync import VideoSync
 
 
 class Display:
