@@ -17,6 +17,7 @@ class VideoSync:
         self.stop_thread = False
         self.with_skeleton = None
         self.with_image = None
+        self.blur_faces = None
         self.play_speed = 1
         self.frame_skip = 1
         self.stream_thread = None

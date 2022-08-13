@@ -8,24 +8,27 @@ import itertools as it
 import pandas as pd
 from pandastable import Table
 
+from video_analyzer.config import config, mv_col, no_act
+
 pd.set_option('display.expand_frame_repr', False)
 from skeleton_tools.utils.constants import REAL_DATA_MOVEMENTS, REMOTE_STORAGE, NET_NAME
 
-
 class DataHandler:
     def __init__(self, videos):
-        Path('resources').mkdir(parents=True, exist_ok=True)
-        with open(path.join(REMOTE_STORAGE, r'Users\TalBarami\va_labels_root.txt'), 'r') as f:
-            self.csv_path = f.read()
-        self.columns = ['video', 'start_time', 'end_time', 'start_frame', 'end_frame', 'movement', 'calc_date', 'annotator']
+        self.csv_path = config['annotations_file']
+        self.columns = config['columns']
+        self.actions = config['actions']
         self._df = None
         self.df = None
-        self.movements = REAL_DATA_MOVEMENTS[:-1]
         self.videos = videos
-        # self.colors = ['Red', 'Green', 'Blue', 'Yellow', 'Purple', 'Cyan', 'Gray', 'Brown']
-        # self.color_items = ['None', 'Unidentified'] + self.colors
-
         self.load()
+
+    def load(self):
+        df = pd.read_csv(self.csv_path)[self.columns] if os.path.isfile(self.csv_path) else pd.DataFrame(columns=self.columns)
+        df = df[df[mv_col] != no_act]
+        df[mv_col] = df[mv_col].apply(self.fix_label)
+        df.dropna(inplace=True, subset=self.columns)
+        self._df = df
 
     def adjust_row(self, row, adj, fps):
         if row['annotator'] == NET_NAME:
@@ -37,11 +40,11 @@ class DataHandler:
         return row
 
     def load_current_dataframe(self):
-        videos = {v.video_name: (v.skeleton_adjust(), v.fps) for v in self.videos()}
+        videos = {v.video_name: (v.adjust_function(), v.fps) for v in self.videos()}
         dfs = [self._df[self._df['video'] == v].copy() for v in videos.keys()]
         for i, df in enumerate(dfs):
             dfs[i] = df.apply(lambda row: self.adjust_row(row, *videos[row['video']]), axis=1)
-        self.df = pd.concat(dfs) if len(dfs) > 0 else pd.DataFrame(self.columns)
+        self.df = pd.concat(dfs) if len(dfs) > 0 else pd.DataFrame(columns=self.columns)
 
     def add(self, videos, start, end, movements):
         if len(videos) < 1:
@@ -80,13 +83,6 @@ class DataHandler:
         self.load_current_dataframe()
         return names
 
-    def load(self):
-        df = pd.read_csv(self.csv_path)[self.columns] if os.path.isfile(self.csv_path) else pd.DataFrame(columns=self.columns)
-        df = df[df['movement'] != 'NoAction']
-        df['movement'] = df['movement'].apply(self.fix_label)
-        df.dropna(inplace=True, subset=self.columns)
-        self._df = df
-
     def save(self):
         self._df.dropna(inplace=True, subset=self.columns)
         self._df.to_csv(self.csv_path, index=False)
@@ -101,7 +97,7 @@ class DataHandler:
             print('Error: multiple intersections?')
         if not result.empty:
             out = {
-                'movement': set(it.chain.from_iterable(result['movement'])),
+                mv_col: set(it.chain.from_iterable(result[mv_col])),
                 'annotator': result['annotator'].tolist()
             }
             return True, out
@@ -136,7 +132,7 @@ class DataHandler:
             try:
                 m = eval(movement)
             except NameError:
-                m = movement
+                m = [movement]
             return m
         else:
             return movement
@@ -150,7 +146,7 @@ class DataHandler:
             start_time = distance_func(df)
             df = df[df['start_time'] == start_time]
             end_time = df['end_time'].iloc[0]
-            label = set(it.chain.from_iterable(df['movement'].tolist()))
+            label = set(it.chain.from_iterable(df[mv_col].tolist()))
             result = (start_time, end_time, label)
 
         return result

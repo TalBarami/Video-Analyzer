@@ -6,13 +6,13 @@ import imutils
 
 
 class VideoPlayer:
-    def __init__(self, video_path, video_sync, video_checked, skeleton, skeleton_adjust, update_function, destroy_function, n_videos):
+    def __init__(self, video_path, video_sync, video_checked, visualizer, adjust_function, init_function, update_function, destroy_function, n_videos):
         self.video_path = video_path
         self.video_name = os.path.basename(video_path)
         self.video_sync = video_sync
         self.video_checked = video_checked
-        self.skeleton = skeleton
-        self.skeleton_adjust = skeleton_adjust
+        self.visualizer = visualizer
+        self.adjust_function = adjust_function
         self.update_function = update_function
         self.destroy_function = destroy_function
         self.n_videos = n_videos
@@ -28,9 +28,7 @@ class VideoPlayer:
         self.duration = self.frames_count / self.fps
 
         self.width, self.height = self.calc_resolution()
-        if self.skeleton:
-            self.skeleton['keypoint'] /= np.array(self.skeleton['original_shape'])
-            self.skeleton['keypoint'] *= np.array((self.width, self.height))
+        init_function(self.width, self.height)
 
         print(f'Playing {self.video_path} on {self.fps} fps, total {self.frames_count} frames, duration {self.duration}')
 
@@ -62,7 +60,7 @@ class VideoPlayer:
             # cv2.resize(frame, (self.width, self.height))
             frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
             frame = imutils.resize(frame, self.width, self.height)
-            self.update_function(frame, self.cap.get(cv2.CAP_PROP_POS_FRAMES), self.get_time_sec(), self.duration, self.skeleton)
+            self.update_function(frame, int(self.cap.get(cv2.CAP_PROP_POS_FRAMES)), self.get_time_sec(), self.duration)
 
     def read_frame(self):
         if self.cap.isOpened():
