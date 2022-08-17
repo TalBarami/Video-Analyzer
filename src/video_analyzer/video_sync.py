@@ -49,7 +49,6 @@ class VideoSync:
         self.lock.release()
 
     def stream(self):
-        vids = self.videos()
         fps = 60
         delay = 1 / fps
         while True:
@@ -62,8 +61,8 @@ class VideoSync:
 
             if not self.stop_thread:
                 if not self.scale_focused:
-                    self.scale_callback(np.array([v.get_time_sec() for v in vids]).max())
-                self.running_tasks = [self.executor.submit(task) for task in [v.next for v in vids]]
+                    self.scale_callback(np.array([v.get_time_sec() for v in self.videos()]).max())
+                self.running_tasks = [self.executor.submit(task) for task in [v.next for v in self.videos()]]
                 for t in self.running_tasks:
                     t.result()
             else:

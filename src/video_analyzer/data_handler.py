@@ -25,7 +25,7 @@ class DataHandler:
 
     def load(self):
         df = collect_labels(self.csv_path)
-        df = pd.read_csv(self.csv_path)[self.columns] if os.path.isfile(self.csv_path) else pd.DataFrame(columns=self.columns)
+        # df = pd.read_csv(self.csv_path)[self.columns] if os.path.isfile(self.csv_path) else pd.DataFrame(columns=self.columns)
         # df = pd.read_csv(r'Z:\Users\TalBarami\JORDI_50_vids_benchmark\annotations\labels_post_qa.csv')
         df = df[df[mv_col] != no_act]
         df[mv_col] = df[mv_col].apply(self.fix_label)
