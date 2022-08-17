@@ -99,7 +99,7 @@ class Display:
         self.data_handler.load_current_dataframe()
 
         lengths = [v.duration for v in self.videos]
-        length = max(lengths) if lengths else 0
+        length = max(lengths) if lengths else 1
         self.root.nametowidget('labelingPanel.manageFrame.videoFrame.seekFrame.scaleBar').config(to=length, tickinterval=length / 10)
 
     def create_video_player(self, video_path, idx):
@@ -130,7 +130,8 @@ class Display:
         # color_combobox.pack(side=RIGHT, fill=X, expand=1, padx=20)
         # color_frame.pack(side=TOP, fill=X, expand=1)
         basename, ext = path.splitext(video_name)
-        detections_path = path.join(self.detections_dir, basename, f'{basename}{config["file_extension"]}')
+        # detections_path = path.join(self.detections_dir, basename, f'{basename}{config["detection_file_extension"]}')
+        detections_path = path.join(self.detections_dir, basename, config['net_name'].lower(), f'{basename}{config["detection_file_extension"]}')
         resolution, fps, frame_count, length = get_video_properties(video_path)
         vis = visualizer(detections_path, resolution)
 

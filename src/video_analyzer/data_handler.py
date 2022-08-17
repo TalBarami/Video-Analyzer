@@ -8,14 +8,14 @@ import itertools as it
 import pandas as pd
 from pandastable import Table
 
-from video_analyzer.config import config, mv_col, no_act
+from video_analyzer.config import config, mv_col, no_act, collect_labels
 
 pd.set_option('display.expand_frame_repr', False)
 from skeleton_tools.utils.constants import REAL_DATA_MOVEMENTS, REMOTE_STORAGE, NET_NAME
 
 class DataHandler:
     def __init__(self, videos):
-        self.csv_path = config['annotations_file']
+        self.csv_path = config['detections_homedir']
         self.columns = config['columns']
         self.actions = config['actions']
         self._df = None
@@ -24,7 +24,9 @@ class DataHandler:
         self.load()
 
     def load(self):
+        df = collect_labels(self.csv_path)
         df = pd.read_csv(self.csv_path)[self.columns] if os.path.isfile(self.csv_path) else pd.DataFrame(columns=self.columns)
+        # df = pd.read_csv(r'Z:\Users\TalBarami\JORDI_50_vids_benchmark\annotations\labels_post_qa.csv')
         df = df[df[mv_col] != no_act]
         df[mv_col] = df[mv_col].apply(self.fix_label)
         df.dropna(inplace=True, subset=self.columns)
@@ -84,9 +86,10 @@ class DataHandler:
         return names
 
     def save(self):
-        self._df.dropna(inplace=True, subset=self.columns)
-        self._df.to_csv(self.csv_path, index=False)
-        self.load_current_dataframe()
+        print('Unable to save in viewer mode.')
+        # self._df.dropna(inplace=True, subset=self.columns)
+        # self._df.to_csv(self.csv_path, index=False)
+        # self.load_current_dataframe()
 
     def intersect(self, video_name, time):
         df = self.df
