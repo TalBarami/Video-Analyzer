@@ -8,7 +8,7 @@ import itertools as it
 import pandas as pd
 from pandastable import Table
 
-from video_analyzer.config import config, mv_col, no_act, model_name
+from video_analyzer.config import config, mv_col
 
 pd.set_option('display.expand_frame_repr', False)
 from skeleton_tools.utils.constants import REAL_DATA_MOVEMENTS, REMOTE_STORAGE, NET_NAME
@@ -25,8 +25,8 @@ class DataHandler:
         self.load()
 
     def load(self):
-        df = collect_labels(config['detections_homedir'], model_name)
-        df = df[df[mv_col] != no_act]
+        df = collect_labels(config['detections_homedir'], config['model_name'])
+        df = df[df[mv_col] != config['no_act']]
         if 'annotations_file' in config.keys():
             human_ann = pd.read_csv(config['annotations_file'])
             human_ann['assessment'] = human_ann['video'].apply(lambda v: '_'.join(v.split('_')[:-2]))

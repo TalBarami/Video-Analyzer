@@ -11,7 +11,10 @@ from skeleton_tools.utils.tools import init_directories, collect_labels
 from video_analyzer.visualization import SkeletonVisualizer, FacialVisualizer
 
 parser = ArgumentParser()
-parser.add_argument("-cfg", "--config_path")
+parser.add_argument("-mode", "--mode")
+parser.add_argument("-homedir", "--detections_homedir")
+parser.add_argument("-annotations", "--annotations_file")
+parser.add_argument("-name", "--model_name")
 args = vars(parser.parse_args())
 
 _skeleton_cfg = {
@@ -42,8 +45,10 @@ _configs = {
     'facial': _facial_cfg,
 }
 
-with open(args['config_path'], 'r') as f:
-    config = OmegaConf.load(f)
+# with open(args['config_path'], 'r') as f:
+#     config = OmegaConf.load(f)
+config = OmegaConf.create(args)
+
 PROJECT_DIR = Path(__file__).parent.parent.parent
 RESOURCES_DIR = osp.join(PROJECT_DIR, 'resources')
 init_directories(RESOURCES_DIR)
@@ -51,5 +56,3 @@ init_directories(RESOURCES_DIR)
 config = OmegaConf.merge(config, OmegaConf.create(_configs[config['mode']]))
 visualizer = _vis_init[config['mode']]
 mv_col = config['movement_col']
-no_act = config['no_act']
-model_name = config['model_name']
