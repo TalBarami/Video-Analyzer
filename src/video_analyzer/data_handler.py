@@ -8,10 +8,11 @@ import itertools as it
 import pandas as pd
 from pandastable import Table
 
-from video_analyzer.config import config, mv_col, no_act, collect_labels
+from video_analyzer.config import config, mv_col, no_act, model_name
 
 pd.set_option('display.expand_frame_repr', False)
 from skeleton_tools.utils.constants import REAL_DATA_MOVEMENTS, REMOTE_STORAGE, NET_NAME
+from skeleton_tools.utils.tools import collect_labels
 
 class DataHandler:
     def __init__(self, videos):
@@ -24,10 +25,16 @@ class DataHandler:
         self.load()
 
     def load(self):
-        df = collect_labels(self.csv_path)
-        # df = pd.read_csv(self.csv_path)[self.columns] if os.path.isfile(self.csv_path) else pd.DataFrame(columns=self.columns)
-        # df = pd.read_csv(r'Z:\Users\TalBarami\JORDI_50_vids_benchmark\annotations\labels_post_qa.csv')
+        df = collect_labels(config['detections_homedir'], model_name)
         df = df[df[mv_col] != no_act]
+        if 'annotations_file' in config.keys():
+            human_ann = pd.read_csv(config['annotations_file'])
+            human_ann['assessment'] = human_ann['video'].apply(lambda v: '_'.join(v.split('_')[:-2]))
+            human_ann['stereotypical_score'] = 1
+            human_ann['annotator'] = 'Human'
+            df = pd.concat((df, human_ann))
+        # df = pd.read_csv(self.csv_path)[self.columns] if os.path.isfile(self.csv_path) else pd.DataFrame(columns=self.columns)
+        # df = pd.read_csv(r'Z:\Users\TalBarami\JORDI_50_vids_benchmark\annotations\human_post_qa.csv')
         df[mv_col] = df[mv_col].apply(self.fix_label)
         df.dropna(inplace=True, subset=self.columns)
         self._df = df

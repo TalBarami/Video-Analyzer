@@ -20,7 +20,7 @@ from skeleton_tools.utils.tools import read_json, read_pkl, get_video_properties
 from src.video_analyzer.data_handler import DataHandler
 from src.video_analyzer.video_player import VideoPlayer
 from src.video_analyzer.video_sync import VideoSync
-from video_analyzer.config import config, mv_col, visualizer
+from video_analyzer.config import config, mv_col, visualizer, model_name
 
 
 class Display:
