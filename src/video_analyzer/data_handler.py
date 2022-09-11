@@ -25,9 +25,9 @@ class DataHandler:
         self.load()
 
     def load(self):
-        df = collect_labels(config['detections_homedir'], config['model_name'])
+        df = collect_labels(config['detections_homedir'], model_name=config['model_name'], file_extension=config['ann_extension'])
         df = df[df[mv_col] != config['no_act']]
-        if 'annotations_file' in config.keys():
+        if config['annotations_file'] is not None:
             human_ann = pd.read_csv(config['annotations_file'])
             human_ann['assessment'] = human_ann['video'].apply(lambda v: '_'.join(v.split('_')[:-2]))
             human_ann['stereotypical_score'] = 1

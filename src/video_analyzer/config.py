@@ -23,7 +23,7 @@ _skeleton_cfg = {
     'actions': REAL_DATA_MOVEMENTS[:-1],
     'no_act': REAL_DATA_MOVEMENTS[-1],
     'movement_col': 'movement',
-    # 'ann_file': '_annotations.csv',
+    'ann_extension': 'annotations',
     'detection_file_extension': '.pkl'
 }
 _facial_cfg = {
@@ -32,7 +32,7 @@ _facial_cfg = {
     'actions': ['anger', 'disgust', 'fear', 'happiness', 'sadness', 'surprise'],
     'no_act': 'neutral',
     'movement_col': 'emotion',
-    # 'ann_file': '_emotions.csv',
+    'ann_extension': 'emotions',
     'detection_file_extension': '_groups.pkl'
 }
 
