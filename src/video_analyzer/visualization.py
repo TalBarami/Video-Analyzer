@@ -1,5 +1,4 @@
 import numpy as np
-from feat.utils import read_feat
 from skeleton_tools.openpose_layouts.body import COCO_LAYOUT
 from skeleton_tools.skeleton_visualization.numpy_visualizer import MMPoseVisualizer
 from skeleton_tools.skeleton_visualization.pyfeat_visualizer import PyfeatVisualizer
@@ -28,7 +27,8 @@ class SkeletonVisualizer:
             frame = self.vis.draw_skeletons(frame,
                                             self.skeleton['keypoint'][:, i, :, :],
                                             self.skeleton['keypoint_score'][:, i, :],
-                                            child_id=(self.skeleton['child_ids'][i] if 'child_ids' in self.skeleton.keys() else None),
+                                            child_id=(self.skeleton['child_ids'][
+                                                          i] if 'child_ids' in self.skeleton.keys() else None),
                                             thickness=2)
         return frame
 
@@ -55,8 +55,10 @@ class FacialVisualizer:
     def set_resolution(self, width, height):
         self.resolution = (width, height)
         for g in self.groups.values():
-            g[['FaceRectX', 'FaceRectY', 'FaceRectWidth', 'FaceRectHeight']] /= np.array(self.org_resolution + self.org_resolution)
-            g[['FaceRectX', 'FaceRectY', 'FaceRectWidth', 'FaceRectHeight']] *= np.array(self.resolution + self.resolution)
+            g[['FaceRectX', 'FaceRectY', 'FaceRectWidth', 'FaceRectHeight']] /= np.array(
+                self.org_resolution + self.org_resolution)
+            g[['FaceRectX', 'FaceRectY', 'FaceRectWidth', 'FaceRectHeight']] *= np.array(
+                self.resolution + self.resolution)
         # self.df[['FaceRectX', 'FaceRectY', 'FaceRectWidth', 'FaceRectHeight']] /= np.array(self.resolution + self.resolution)
         # self.resolution = (width, height)
         # self.df[['FaceRectX', 'FaceRectY', 'FaceRectWidth', 'FaceRectHeight']] *= np.array(self.resolution + self.resolution)
@@ -72,3 +74,20 @@ class FacialVisualizer:
 
     def auto_adjust(self):
         return 0
+
+
+class PlaceHolderVisualizer:
+    def __init__(self):
+        self.user_adjust = 0
+
+    def auto_adjust(self):
+        return 0
+
+    def draw(self, frame, frame_number):
+        return frame
+
+    def set_resolution(self, width, height):
+        pass
+
+    def set_blurring(self, blur_face):
+        pass

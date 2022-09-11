@@ -1,6 +1,6 @@
 import os
 import threading
-from os import path
+from os import path as osp
 from time import sleep
 from tkinter import *
 from tkinter import ttk, messagebox
@@ -16,11 +16,12 @@ import numpy as np
 from skeleton_tools.openpose_layouts.body import COCO_LAYOUT
 from skeleton_tools.skeleton_visualization.numpy_visualizer import MMPoseVisualizer
 from skeleton_tools.utils.constants import NET_NAME, REMOTE_STORAGE
-from skeleton_tools.utils.tools import read_json, read_pkl, get_video_properties
+from skeleton_tools.utils.tools import read_json, read_pkl, get_video_properties, collect_labels
 from src.video_analyzer.data_handler import DataHandler
 from src.video_analyzer.video_player import VideoPlayer
 from src.video_analyzer.video_sync import VideoSync
 from video_analyzer.config import config, mv_col, visualizer
+from video_analyzer.visualization import PlaceHolderVisualizer
 
 
 class Display:
@@ -103,7 +104,7 @@ class Display:
         self.root.nametowidget('labelingPanel.manageFrame.videoFrame.seekFrame.scaleBar').config(to=length, tickinterval=length / 10)
 
     def create_video_player(self, video_path, idx):
-        video_name = os.path.basename(video_path)
+        video_name = osp.basename(video_path)
         videos_frame = self.root.nametowidget('mediaPanel.videosFrame')
 
         main_frame = Frame(videos_frame, name=f'video_{idx}', highlightthickness=2)
@@ -129,11 +130,14 @@ class Display:
         # color_combobox.current(0)
         # color_combobox.pack(side=RIGHT, fill=X, expand=1, padx=20)
         # color_frame.pack(side=TOP, fill=X, expand=1)
-        basename, ext = path.splitext(video_name)
-        # detections_path = path.join(self.detections_dir, basename, f'{basename}{config["detection_file_extension"]}')
-        detections_path = path.join(self.detections_dir, basename, config['net_name'].lower(), f'{basename}{config["detection_file_extension"]}')
-        resolution, fps, frame_count, length = get_video_properties(video_path)
-        vis = visualizer(detections_path, resolution)
+        basename, ext = osp.splitext(video_name)
+        # detections_path = osp.join(self.detections_dir, basename, f'{basename}{config["detection_file_extension"]}')
+        detections_path = osp.join(self.detections_dir, basename, config['net_name'].lower(), f'{basename}{config["detection_file_extension"]}')
+        if osp.exists(detections_path):
+            resolution, fps, frame_count, length = get_video_properties(video_path)
+            vis = visualizer(detections_path, resolution)
+        else:
+            vis = PlaceHolderVisualizer()
 
         detection_var = StringVar()
         detection_var.set(str(vis.auto_adjust()))
@@ -165,7 +169,7 @@ class Display:
         Checkbutton(data_frame, text='Include Video', variable=include_video).pack(side=TOP)
 
         data_frame.pack(side=LEFT, fill=BOTH, expand=1)
-        # skeleton_pkl = read_pkl(file_path) if path.isfile(file_path) else None
+        # skeleton_pkl = read_pkl(file_path) if osp.isfile(file_path) else None
         # if skeleton_pkl is not None and 'adjust' in skeleton_pkl.keys():
         #     skeleton_var.set(str(0 if skeleton_pkl['adjust'] < 12 else skeleton_pkl['adjust']))
         # vis = MMPoseVisualizer(COCO_LAYOUT)
