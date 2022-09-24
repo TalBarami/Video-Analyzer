@@ -32,7 +32,7 @@ _facial_cfg = {
     'actions': ['anger', 'disgust', 'fear', 'happiness', 'sadness', 'surprise'],
     'no_act': 'neutral',
     'movement_col': 'emotion',
-    'ann_extension': 'emotions',
+    'ann_extension': 'annotations',
     'detection_file_extension': '_groups.pkl'
 }
 
