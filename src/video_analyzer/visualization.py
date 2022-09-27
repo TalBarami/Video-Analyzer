@@ -1,5 +1,6 @@
 import numpy as np
 from skeleton_tools.openpose_layouts.body import COCO_LAYOUT
+from skeleton_tools.openpose_layouts.face import PYFEAT_FACIAL
 from skeleton_tools.skeleton_visualization.numpy_visualizer import MMPoseVisualizer
 from skeleton_tools.skeleton_visualization.pyfeat_visualizer import PyfeatVisualizer
 from skeleton_tools.utils.tools import read_pkl
@@ -38,7 +39,8 @@ class SkeletonVisualizer:
 
 class FacialVisualizer:
     def __init__(self, pyfeat_out_path, org_resolution, blur_face=False):
-        self.vis = PyfeatVisualizer(blur_face=blur_face)
+        self.layout = PYFEAT_FACIAL
+        self.vis = PyfeatVisualizer(self.layout, blur_face=blur_face)
         self.pyfeat_out_path = pyfeat_out_path
         self.groups = read_pkl(self.pyfeat_out_path)
         for g in self.groups.values():
@@ -54,11 +56,16 @@ class FacialVisualizer:
 
     def set_resolution(self, width, height):
         self.resolution = (width, height)
-        for g in self.groups.values():
-            g[['FaceRectX', 'FaceRectY', 'FaceRectWidth', 'FaceRectHeight']] /= np.array(
-                self.org_resolution + self.org_resolution)
-            g[['FaceRectX', 'FaceRectY', 'FaceRectWidth', 'FaceRectHeight']] *= np.array(
-                self.resolution + self.resolution)
+        # for g in self.groups.values():
+        #     g[['FaceRectX', 'FaceRectY', 'FaceRectWidth', 'FaceRectHeight']] /= np.array(
+        #         self.org_resolution + self.org_resolution)
+        #     g[['FaceRectX', 'FaceRectY', 'FaceRectWidth', 'FaceRectHeight']] *= np.array(
+        #         self.resolution + self.resolution)
+        #     g[g.landmark_columns[:len(self.layout)]] /= self.org_resolution[0]
+        #     g[g.landmark_columns[:len(self.layout)]] *= self.resolution[0]
+        #     g[g.landmark_columns[len(self.layout):]] /= self.org_resolution[1]
+        #     g[g.landmark_columns[len(self.layout):]] *= self.resolution[1]
+
         # self.df[['FaceRectX', 'FaceRectY', 'FaceRectWidth', 'FaceRectHeight']] /= np.array(self.resolution + self.resolution)
         # self.resolution = (width, height)
         # self.df[['FaceRectX', 'FaceRectY', 'FaceRectWidth', 'FaceRectHeight']] *= np.array(self.resolution + self.resolution)
@@ -69,7 +76,19 @@ class FacialVisualizer:
         i = frame_number - self.user_adjust()
         if i in self.groups.keys():
             self.last_frame = i
-        frame = self.vis.draw_facebox(frame, self.groups[self.last_frame])
+
+        skeletons, conf, cid = np.zeros((self.groups[self.last_frame].shape[0], len(self.layout), 2)), np.zeros((self.groups[self.last_frame].shape[0], len(self.layout))), None
+        for i, row in self.groups[self.last_frame].reset_index(drop=True).iterrows():
+            skeletons[i] = np.array([(x, y) for (x, y) in zip(row.landmark_x.values, row.landmark_y.values)]) / self.org_resolution * self.resolution
+            conf[i] = row['FaceScore']
+            if row['is_child']:
+                cid = i
+        # frame = self.vis.draw_facebox(frame, self.groups[self.last_frame])
+        frame = self.vis.draw_skeletons(frame,
+                                        skeletons.astype(int),
+                                        conf,
+                                        thickness=2,
+                                        child_id=cid)
         return frame
 
     def auto_adjust(self):
