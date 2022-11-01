@@ -1,3 +1,4 @@
+import cv2
 import numpy as np
 from skeleton_tools.openpose_layouts.body import COCO_LAYOUT
 from skeleton_tools.openpose_layouts.face import PYFEAT_FACIAL
@@ -50,6 +51,7 @@ class FacialVisualizer:
         self.org_resolution = org_resolution
         self.resolution = org_resolution
         self.last_frame = 0
+        self.child_only = True
 
     def set_blurring(self, blur_face):
         self.vis.blur_face = blur_face
@@ -76,12 +78,17 @@ class FacialVisualizer:
         i = frame_number - self.user_adjust()
         if i in self.groups.keys():
             self.last_frame = i
-
-        skeletons, conf, cid = np.zeros((self.groups[self.last_frame].shape[0], len(self.layout), 2)), np.zeros((self.groups[self.last_frame].shape[0], len(self.layout))), None
-        for i, row in self.groups[self.last_frame].reset_index(drop=True).iterrows():
+        g = self.groups[self.last_frame].reset_index(drop=True)
+        if self.child_only:
+            n = 1
+            g = g[g['is_child'] == 1].reset_index(drop=True)
+        else:
+            n = self.groups[self.last_frame].shape[0]
+        skeletons, conf, cid = np.zeros((n, len(self.layout), 2)), np.zeros((n, len(self.layout))), None
+        for i, row in g.iterrows():
             skeletons[i] = np.array([(x, y) for (x, y) in zip(row.landmark_x.values, row.landmark_y.values)]) / self.org_resolution * self.resolution
             conf[i] = row['FaceScore']
-            if row['is_child']:
+            if row['is_child'] == 1:
                 cid = i
         # frame = self.vis.draw_facebox(frame, self.groups[self.last_frame])
         frame = self.vis.draw_skeletons(frame,
@@ -89,6 +96,14 @@ class FacialVisualizer:
                                         conf,
                                         thickness=2,
                                         child_id=cid)
+        if cid is not None:
+            child_row = g.loc[cid]
+            face_conf, happy_score = child_row['FaceScore'], child_row['happiness']
+            cv2.putText(frame, f'Face Score: {face_conf:.4f}', (0, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 0, 0), 3)
+            cv2.putText(frame, f'Face Score: {face_conf:.4f}', (0, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 2)
+            cv2.putText(frame, f'Happiness Score: {happy_score:.4f}', (0, 80), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 0, 0), 3)
+            cv2.putText(frame, f'Happiness Score: {happy_score:.4f}', (0, 80), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 2)
+
         return frame
 
     def auto_adjust(self):
