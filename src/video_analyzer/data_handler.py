@@ -141,7 +141,7 @@ class DataHandler:
         if type(movement) == str:
             try:
                 m = eval(movement)
-            except NameError:
+            except Exception:
                 m = [movement]
             return m
         else:
