@@ -1,4 +1,5 @@
 import os
+from os import path as osp
 import threading
 import numpy as np
 import cv2
@@ -8,7 +9,7 @@ import imutils
 class VideoPlayer:
     def __init__(self, video_path, video_sync, video_checked, visualizer, adjust_function, init_function, update_function, destroy_function, n_videos):
         self.video_path = video_path
-        self.video_name = os.path.basename(video_path)
+        self.video_name = osp.splitext(osp.basename(video_path))[0]
         self.video_sync = video_sync
         self.video_checked = video_checked
         self.visualizer = visualizer

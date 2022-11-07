@@ -102,9 +102,9 @@ class DataHandler:
         df = self.df
         df = df[df['video'] == video_name]
         result = df[(df['start_time'] <= time) & (df['end_time'] >= time)]
-        if result.shape[0] > 1:
-            # TODO: Check this case
-            print('Error: multiple intersections?')
+        # if result.shape[0] > 1:
+        #     # TODO: Check this case
+        #     print('Error: multiple intersections?')
         if not result.empty:
             out = {
                 mv_col: set(it.chain.from_iterable(result[mv_col])),

@@ -106,14 +106,14 @@ class Display:
     def create_video_player(self, video_path, idx):
         video_name = osp.basename(video_path)
         videos_frame = self.root.nametowidget('mediaPanel.videosFrame')
-
+        basename, ext = osp.splitext(video_name)
         main_frame = Frame(videos_frame, name=f'video_{idx}', highlightthickness=2)
         main_frame.pack(side=LEFT, fill=BOTH, expand=0)
 
         header_frame = Frame(main_frame)
         name_label = Label(header_frame, text=video_name, width=60)
         name_label.pack(side=TOP)
-        previously_recorded = self.data_handler.any(video_name)
+        previously_recorded = self.data_handler.any(basename)
         name_label.config(fg='Red' if previously_recorded else None)
 
         header_frame.pack(side=TOP)
@@ -130,7 +130,6 @@ class Display:
         # color_combobox.current(0)
         # color_combobox.pack(side=RIGHT, fill=X, expand=1, padx=20)
         # color_frame.pack(side=TOP, fill=X, expand=1)
-        basename, ext = osp.splitext(video_name)
         # detections_path = osp.join(self.detections_dir, basename, f'{basename}{config["detection_file_extension"]}')
         detections_path = osp.join(self.detections_dir, basename, config['net_name'].lower(), f'{basename}{config["detection_file_extension"]}')
         if osp.exists(detections_path):
@@ -194,7 +193,7 @@ class Display:
             duration = np.round(duration, 1)
             time_var.set(f'{time}/{duration}\n{frame_number}')
 
-            ret, labels_recorded = self.data_handler.intersect(video_name, time)
+            ret, labels_recorded = self.data_handler.intersect(basename, time)
             if ret:
                 act = set(labels_recorded[mv_col])
                 annotators = set(labels_recorded['annotator'])
