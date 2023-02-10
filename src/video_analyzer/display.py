@@ -1,22 +1,18 @@
-import os
 import threading
+import time
 from os import path as osp
 from time import sleep
 from tkinter import *
 from tkinter import ttk, messagebox
 from tkinter.filedialog import askopenfilenames
 
-from tendo import singleton
-
-import time
 import PIL.Image
 import PIL.ImageTk
 import numpy as np
+from skeleton_tools.utils.constants import NET_NAME
+from skeleton_tools.utils.tools import get_video_properties
+from tendo import singleton
 
-from skeleton_tools.openpose_layouts.body import COCO_LAYOUT
-from skeleton_tools.skeleton_visualization.numpy_visualizer import MMPoseVisualizer
-from skeleton_tools.utils.constants import NET_NAME, REMOTE_STORAGE
-from skeleton_tools.utils.tools import read_json, read_pkl, get_video_properties, collect_labels
 from src.video_analyzer.data_handler import DataHandler
 from src.video_analyzer.video_player import VideoPlayer
 from src.video_analyzer.video_sync import VideoSync

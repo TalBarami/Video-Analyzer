@@ -3,7 +3,6 @@ from concurrent.futures import ThreadPoolExecutor
 from threading import Lock
 from time import sleep
 from time import time as timer
-from tkinter import DoubleVar
 
 import numpy as np
 

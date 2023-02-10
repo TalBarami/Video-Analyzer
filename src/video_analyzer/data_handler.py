@@ -1,9 +1,6 @@
-import tkinter as tk
-from pathlib import Path
-from tkinter import messagebox
-import os
-from os import path
 import itertools as it
+import tkinter as tk
+from tkinter import messagebox
 
 import pandas as pd
 from pandastable import Table
@@ -11,8 +8,8 @@ from pandastable import Table
 from video_analyzer.config import config, mv_col
 
 pd.set_option('display.expand_frame_repr', False)
-from skeleton_tools.utils.constants import REAL_DATA_MOVEMENTS, REMOTE_STORAGE, NET_NAME
-from skeleton_tools.utils.tools import collect_labels
+from skeleton_tools.utils.constants import NET_NAME
+from skeleton_tools.utils.evaluation_utils import collect_labels
 
 class DataHandler:
     def __init__(self, videos):

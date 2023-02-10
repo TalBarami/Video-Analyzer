@@ -1,12 +1,10 @@
-from pathlib import Path
-from os import path as osp
-from omegaconf import OmegaConf
 from argparse import ArgumentParser
-import pandas as pd
-import os
+from os import path as osp
+from pathlib import Path
 
+from omegaconf import OmegaConf
 from skeleton_tools.utils.constants import REAL_DATA_MOVEMENTS
-from skeleton_tools.utils.tools import init_directories, collect_labels
+from skeleton_tools.utils.tools import init_directories
 
 from video_analyzer.visualization import SkeletonVisualizer, FacialVisualizer
 

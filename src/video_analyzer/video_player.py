@@ -1,9 +1,9 @@
-import os
-from os import path as osp
 import threading
-import numpy as np
+from os import path as osp
+
 import cv2
 import imutils
+import numpy as np
 
 
 class VideoPlayer:
