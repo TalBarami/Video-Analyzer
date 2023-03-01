@@ -30,8 +30,8 @@ _facial_cfg = {
     'actions': ['anger', 'disgust', 'fear', 'happiness', 'sadness', 'surprise'],
     'no_act': 'neutral',
     'movement_col': 'emotion',
-    'ann_extension': 'annotations',
-    'detection_file_extension': '_groups.pkl'
+    'ann_extension': '0.6_annotations',
+    'detection_file_extension': '.pkl'
 }
 
 _vis_init = {

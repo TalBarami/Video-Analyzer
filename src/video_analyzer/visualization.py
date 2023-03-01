@@ -2,8 +2,10 @@ import cv2
 import numpy as np
 from skeleton_tools.openpose_layouts.body import COCO_LAYOUT
 from skeleton_tools.openpose_layouts.face import PYFEAT_FACIAL
-from skeleton_tools.skeleton_visualization.numpy_visualizer import MMPoseVisualizer
-from skeleton_tools.skeleton_visualization.pyfeat_visualizer import PyfeatVisualizer
+from skeleton_tools.skeleton_visualization.data_prepare.data_extract import PyfeatDataExtractor
+# from skeleton_tools.skeleton_visualization.numpy_visualizer import MMPoseVisualizer
+from skeleton_tools.skeleton_visualization.painters.base_painters import GlobalPainter, BlurPainter
+from skeleton_tools.skeleton_visualization.painters.local_painters import GraphPainter, ScorePainter, BoxPainter
 from skeleton_tools.utils.tools import read_pkl
 
 
@@ -40,71 +42,36 @@ class SkeletonVisualizer:
 
 class FacialVisualizer:
     def __init__(self, pyfeat_out_path, org_resolution, blur_face=False):
-        self.layout = PYFEAT_FACIAL
-        self.vis = PyfeatVisualizer(self.layout, blur_face=blur_face)
         self.pyfeat_out_path = pyfeat_out_path
-        self.groups = read_pkl(self.pyfeat_out_path)
-        for g in self.groups.values():
-            g['FaceRectX'] += (g['FaceRectWidth'] / 2)
-            g['FaceRectY'] += (g['FaceRectHeight'] / 2)
+        self.layout = PYFEAT_FACIAL
+        self.eps = 0.985
+        self.extractor = PyfeatDataExtractor(self.layout)
+        self.data = self.extractor(pyfeat_out_path)
+        self.blur_painter = BlurPainter(self.data, active=blur_face)
+        self.score_painter = ScorePainter()
+        local_painters = [GraphPainter(self.layout, epsilon=self.eps, alpha=0.4), BoxPainter(), self.score_painter]
+        self.global_painters = [self.blur_painter] + [GlobalPainter(p) for p in local_painters]
         self.user_adjust = self.auto_adjust
-        self.org_resolution = org_resolution
-        self.resolution = org_resolution
-        self.last_frame = 0
-        self.child_only = True
+        self.org_resolution = np.array(org_resolution)
+        self.resolution = np.array(org_resolution)
 
     def set_blurring(self, blur_face):
-        self.vis.blur_face = blur_face
+        self.blur_painter.switch(blur_face)
 
     def set_resolution(self, width, height):
-        self.resolution = (width, height)
-        # for g in self.groups.values():
-        #     g[['FaceRectX', 'FaceRectY', 'FaceRectWidth', 'FaceRectHeight']] /= np.array(
-        #         self.org_resolution + self.org_resolution)
-        #     g[['FaceRectX', 'FaceRectY', 'FaceRectWidth', 'FaceRectHeight']] *= np.array(
-        #         self.resolution + self.resolution)
-        #     g[g.landmark_columns[:len(self.layout)]] /= self.org_resolution[0]
-        #     g[g.landmark_columns[:len(self.layout)]] *= self.resolution[0]
-        #     g[g.landmark_columns[len(self.layout):]] /= self.org_resolution[1]
-        #     g[g.landmark_columns[len(self.layout):]] *= self.resolution[1]
-
-        # self.df[['FaceRectX', 'FaceRectY', 'FaceRectWidth', 'FaceRectHeight']] /= np.array(self.resolution + self.resolution)
-        # self.resolution = (width, height)
-        # self.df[['FaceRectX', 'FaceRectY', 'FaceRectWidth', 'FaceRectHeight']] *= np.array(self.resolution + self.resolution)
-        # self.groups = {i: g for i, g in self.df.groupby('frame')}
-        self.last_frame = min(self.groups.keys())
+        new_resolution = np.array([width, height])
+        for k in ['landmarks', 'boxes', 'face_boxes', 'blur_boxes']:
+            if k in self.data.keys():
+                self.data[k] = (self.data[k] / self.resolution * new_resolution).astype(int)
+        self.score_painter.scale = (new_resolution / self.org_resolution)[0]
+        self.resolution = new_resolution
 
     def draw(self, frame, frame_number):
         i = frame_number - self.user_adjust()
-        if i in self.groups.keys():
-            self.last_frame = i
-        g = self.groups[self.last_frame].reset_index(drop=True)
-        if self.child_only:
-            n = 1
-            g = g[g['is_child'] == 1].reset_index(drop=True)
-        else:
-            n = self.groups[self.last_frame].shape[0]
-        skeletons, conf, cid = np.zeros((n, len(self.layout), 2)), np.zeros((n, len(self.layout))), None
-        for i, row in g.iterrows():
-            skeletons[i] = np.array([(x, y) for (x, y) in zip(row.landmark_x.values, row.landmark_y.values)]) / self.org_resolution * self.resolution
-            conf[i] = row['FaceScore']
-            if row['is_child'] == 1:
-                cid = i
-        # frame = self.vis.draw_facebox(frame, self.groups[self.last_frame])
-        frame = self.vis.draw_skeletons(frame,
-                                        skeletons.astype(int),
-                                        conf,
-                                        thickness=2,
-                                        child_id=cid)
-        if cid is not None:
-            child_row = g.loc[cid]
-            face_conf, happy_score = child_row['FaceScore'], child_row['happiness']
-            cv2.putText(frame, f'Face Score: {face_conf:.4f}', (0, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 0, 0), 3)
-            cv2.putText(frame, f'Face Score: {face_conf:.4f}', (0, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 2)
-            cv2.putText(frame, f'Happiness Score: {happy_score:.4f}', (0, 80), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 0, 0), 3)
-            cv2.putText(frame, f'Happiness Score: {happy_score:.4f}', (0, 80), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 2)
-
-        return frame
+        paint_frame = frame.copy()
+        for painter in self.global_painters:
+            paint_frame = painter(paint_frame, self.data, i)
+        return paint_frame
 
     def auto_adjust(self):
         return 0

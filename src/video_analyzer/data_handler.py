@@ -4,6 +4,7 @@ from tkinter import messagebox
 
 import pandas as pd
 from pandastable import Table
+from os import path as osp
 
 from video_analyzer.config import config, mv_col
 
@@ -23,6 +24,8 @@ class DataHandler:
 
     def load(self):
         df = collect_labels(config['detections_homedir'], model_name=config['model_name'], file_extension=config['ann_extension'])
+        df['video_fullname'] = df['video'].copy()
+        df['video'] = df['video'].apply(lambda x: osp.splitext(x)[0])
         df = df[df[mv_col] != config['no_act']]
         if config['annotations_file'] is not None:
             human_ann = pd.read_csv(config['annotations_file'])

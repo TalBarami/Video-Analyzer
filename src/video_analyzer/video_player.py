@@ -34,8 +34,8 @@ class VideoPlayer:
         print(f'Playing {self.video_path} on {self.fps} fps, total {self.frames_count} frames, duration {self.duration}')
 
     def calc_resolution(self):
-        max_width = 600 - 50 * (self.n_videos - 1)
-        max_height = 400 - 50 * (self.n_videos - 1)
+        max_width = 500 - 50 * (self.n_videos - 1)
+        max_height = 500 - 50 * (self.n_videos - 1)
 
         width = self.cap.get(cv2.CAP_PROP_FRAME_WIDTH)
         height = self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
