@@ -1,52 +1,18 @@
-import cv2
 import numpy as np
+import pandas as pd
 from skeleton_tools.openpose_layouts.body import COCO_LAYOUT
 from skeleton_tools.openpose_layouts.face import PYFEAT_FACIAL
-from skeleton_tools.skeleton_visualization.data_prepare.data_extract import PyfeatDataExtractor
-# from skeleton_tools.skeleton_visualization.numpy_visualizer import MMPoseVisualizer
+from skeleton_tools.skeleton_visualization.data_prepare.data_extract import PyfeatDataExtractor, MMPoseDataExtractor
 from skeleton_tools.skeleton_visualization.painters.base_painters import GlobalPainter, BlurPainter
 from skeleton_tools.skeleton_visualization.painters.local_painters import GraphPainter, ScorePainter, BoxPainter
-from skeleton_tools.utils.tools import read_pkl
 
-
-class SkeletonVisualizer:
-    def __init__(self, skeleton_path, org_resolution, blur_face=False):
-        self.vis = MMPoseVisualizer(COCO_LAYOUT, blur_face=blur_face)
-        self.skeleton_path = skeleton_path
-        self.skeleton = read_pkl(skeleton_path)
-        self.resolution = org_resolution
-        self.user_adjust = self.auto_adjust
-
-    def set_blurring(self, blur_face):
-        self.vis.blur_face = blur_face
-
-    def set_resolution(self, width, height):
-        self.skeleton['keypoint'] /= np.array(self.resolution)
-        self.resolution = (width, height)
-        self.skeleton['keypoint'] *= np.array(self.resolution)
-
-    def draw(self, frame, frame_number):
-        i = frame_number - self.user_adjust()
-        if i >= 0:
-            frame = self.vis.draw_skeletons(frame,
-                                            self.skeleton['keypoint'][:, i, :, :],
-                                            self.skeleton['keypoint_score'][:, i, :],
-                                            child_id=(self.skeleton['child_ids'][
-                                                          i] if 'child_ids' in self.skeleton.keys() else None),
-                                            thickness=2)
-        return frame
-
-    def auto_adjust(self):
-        return self.skeleton['adjust']
-
-
-class FacialVisualizer:
-    def __init__(self, pyfeat_out_path, org_resolution, blur_face=False):
-        self.pyfeat_out_path = pyfeat_out_path
-        self.layout = PYFEAT_FACIAL
-        self.eps = 0.985
-        self.extractor = PyfeatDataExtractor(self.layout)
-        self.data = self.extractor(pyfeat_out_path)
+class Visualizer:
+    def __init__(self, model_output_path, data_layout, extractor_initializer, epsilon, org_resolution, blur_face):
+        self.model_output_path = model_output_path
+        self.layout = data_layout
+        self.eps = epsilon
+        self.extractor = extractor_initializer(self.layout)
+        self.data = self.extractor(self.model_output_path)
         self.blur_painter = BlurPainter(self.data, active=blur_face)
         self.score_painter = ScorePainter()
         local_painters = [GraphPainter(self.layout, epsilon=self.eps, alpha=0.4), BoxPainter(), self.score_painter]
@@ -77,8 +43,20 @@ class FacialVisualizer:
         return 0
 
 
-class PlaceHolderVisualizer:
-    def __init__(self):
+
+class SkeletonVisualizer(Visualizer):
+    def __init__(self, skeleton_path, org_resolution, blur_face=False):
+        super().__init__(skeleton_path, COCO_LAYOUT, MMPoseDataExtractor, 0.4, org_resolution, blur_face)
+
+
+class FacialVisualizer(Visualizer):
+    def __init__(self, pyfeat_out_path, org_resolution, blur_face=False):
+        super().__init__(pyfeat_out_path, PYFEAT_FACIAL, PyfeatDataExtractor, 0.98, org_resolution, blur_face)
+
+
+class PlaceHolderVisualizer(Visualizer):
+    def __init__(self, model_output_path, data_layout, extractor_initializer, epsilon, org_resolution, blur_face):
+        super().__init__('', '', lambda s: 0, 0, (0, 0), 0)
         self.user_adjust = 0
 
     def auto_adjust(self):

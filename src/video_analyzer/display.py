@@ -8,6 +8,7 @@ from tkinter.filedialog import askopenfilenames
 
 import PIL.Image
 import PIL.ImageTk
+import cv2
 import numpy as np
 from skeleton_tools.utils.constants import NET_NAME
 from skeleton_tools.utils.tools import get_video_properties
@@ -176,6 +177,7 @@ class Display:
                 frame *= 0
             if self.video_sync.with_skeleton.get():
                 frame = vis.draw(frame, frame_number)
+            frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
             # if skeleton_pkl and self.video_sync.with_skeleton.get():
             #     i = int(frame_number) + get_skeleton_adjust()
             #     if i >= 0:

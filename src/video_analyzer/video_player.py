@@ -58,8 +58,6 @@ class VideoPlayer:
         for i in range(self.video_sync.frame_skip):
             ret, frame = self.read_frame()
         if ret:
-            # cv2.resize(frame, (self.width, self.height))
-            frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
             frame = imutils.resize(frame, self.width, self.height)
             self.update_function(frame, int(self.cap.get(cv2.CAP_PROP_POS_FRAMES)), self.get_time_sec(), self.duration)
 

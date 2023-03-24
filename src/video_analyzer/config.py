@@ -30,16 +30,16 @@ _facial_cfg = {
     'actions': ['anger', 'disgust', 'fear', 'happiness', 'sadness', 'surprise'],
     'no_act': 'neutral',
     'movement_col': 'emotion',
-    'ann_extension': '0.6_annotations',
+    'ann_extension': 'et=0.6_ft=0.985_annotations',
     'detection_file_extension': '.pkl'
 }
 
 _vis_init = {
-    'skeleton': lambda path, res: SkeletonVisualizer(path, res),
+    'smm': lambda path, res: SkeletonVisualizer(path, res),
     'facial': lambda path, res: FacialVisualizer(path, res),
 }
 _configs = {
-    'skeleton': _skeleton_cfg,
+    'smm': _skeleton_cfg,
     'facial': _facial_cfg,
 }
 
