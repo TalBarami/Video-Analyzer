@@ -3,8 +3,9 @@ import pandas as pd
 from skeleton_tools.openpose_layouts.body import COCO_LAYOUT
 from skeleton_tools.openpose_layouts.face import PYFEAT_FACIAL
 from skeleton_tools.skeleton_visualization.data_prepare.data_extract import PyfeatDataExtractor, MMPoseDataExtractor
-from skeleton_tools.skeleton_visualization.painters.base_painters import GlobalPainter, BlurPainter
-from skeleton_tools.skeleton_visualization.painters.local_painters import GraphPainter, ScorePainter, BoxPainter
+from skeleton_tools.skeleton_visualization.paint_components.frame_painters.base_painters import BlurPainter, GlobalPainter
+from skeleton_tools.skeleton_visualization.paint_components.frame_painters.local_painters import ScorePainter, GraphPainter, BoxPainter
+
 
 class Visualizer:
     def __init__(self, model_output_path, data_layout, extractor_initializer, epsilon, org_resolution, blur_face):
@@ -15,7 +16,8 @@ class Visualizer:
         self.data = self.extractor(self.model_output_path)
         self.blur_painter = BlurPainter(self.data, active=blur_face)
         self.score_painter = ScorePainter()
-        local_painters = [GraphPainter(self.layout, epsilon=self.eps, alpha=0.4), BoxPainter(), self.score_painter]
+        # local_painters = [GraphPainter(self.layout, epsilon=self.eps, alpha=0.4), BoxPainter(), self.score_painter]
+        local_painters = [GraphPainter(self.layout, epsilon=self.eps, alpha=0.4), BoxPainter()]
         self.global_painters = [self.blur_painter] + [GlobalPainter(p) for p in local_painters]
         self.user_adjust = self.auto_adjust
         self.org_resolution = np.array(org_resolution)
@@ -54,9 +56,8 @@ class FacialVisualizer(Visualizer):
         super().__init__(pyfeat_out_path, PYFEAT_FACIAL, PyfeatDataExtractor, 0.98, org_resolution, blur_face)
 
 
-class PlaceHolderVisualizer(Visualizer):
-    def __init__(self, model_output_path, data_layout, extractor_initializer, epsilon, org_resolution, blur_face):
-        super().__init__('', '', lambda s: 0, 0, (0, 0), 0)
+class PlaceHolderVisualizer:
+    def __init__(self):
         self.user_adjust = 0
 
     def auto_adjust(self):
