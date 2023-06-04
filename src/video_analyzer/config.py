@@ -13,6 +13,7 @@ parser.add_argument("-mode", "--mode")
 parser.add_argument("-homedir", "--detections_homedir")
 parser.add_argument("-annotations", "--annotations_file")
 parser.add_argument("-name", "--model_name")
+parser.add_argument("-a", "--annotate", action="store_true")
 args = vars(parser.parse_args())
 
 _skeleton_cfg = {

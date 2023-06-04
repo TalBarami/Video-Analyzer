@@ -14,7 +14,7 @@ from skeleton_tools.utils.evaluation_utils import collect_labels
 
 class DataHandler:
     def __init__(self, videos):
-        self.csv_path = config['detections_homedir']
+        self.annotations_path = osp.join('resources', 'annotations.csv')
         self.columns = config['columns']
         self.actions = config['actions']
         self._df = None
@@ -23,21 +23,24 @@ class DataHandler:
         self.load()
 
     def load(self):
-        df = collect_labels(config['detections_homedir'], model_name=config['model_name'], file_extension=config['ann_extension'])
-        df['video_fullname'] = df['video'].copy()
-        df['video'] = df['video'].apply(lambda x: osp.splitext(x)[0])
-        df = df[df[mv_col] != config['no_act']]
-        if config['annotations_file'] is not None:
-            human_ann = pd.read_csv(config['annotations_file'])
-            human_ann['assessment'] = human_ann['video'].apply(lambda v: '_'.join(v.split('_')[:-2]))
-            human_ann['stereotypical_score'] = 1
-            human_ann['annotator'] = 'Human'
-            df = pd.concat((df, human_ann))
-        # df = pd.read_csv(self.csv_path)[self.columns] if os.path.isfile(self.csv_path) else pd.DataFrame(columns=self.columns)
-        # df = pd.read_csv(r'Z:\Users\TalBarami\JORDI_50_vids_benchmark\annotations\human_post_qa.csv')
-        df[mv_col] = df[mv_col].apply(self.fix_label)
-        df.dropna(inplace=True, subset=self.columns)
-        self._df = df
+        if config.annotate:
+            self._df = pd.read_csv(self.annotations_path)[self.columns] if osp.isfile(self.annotations_path) else pd.DataFrame(columns=self.columns)
+        else:
+            df = collect_labels(config['detections_homedir'], model_name=config['model_name'], file_extension=config['ann_extension'])
+            df['video_fullname'] = df['video'].copy()
+            df['video'] = df['video'].apply(lambda x: osp.splitext(x)[0])
+            df = df[df[mv_col] != config['no_act']]
+            if config['annotations_file'] is not None:
+                human_ann = pd.read_csv(config['annotations_file'])
+                human_ann['assessment'] = human_ann['video'].apply(lambda v: '_'.join(v.split('_')[:-2]))
+                human_ann['stereotypical_score'] = 1
+                human_ann['annotator'] = 'Human'
+                df = pd.concat((df, human_ann))
+            # df = pd.read_csv(self.csv_path)[self.columns] if os.path.isfile(self.csv_path) else pd.DataFrame(columns=self.columns)
+            # df = pd.read_csv(r'Z:\Users\TalBarami\JORDI_50_vids_benchmark\annotations\human_post_qa.csv')
+            df[mv_col] = df[mv_col].apply(self.fix_label)
+            df.dropna(inplace=True, subset=self.columns)
+            self._df = df
 
     def adjust_row(self, row, adj, fps):
         if row['annotator'] == NET_NAME:
@@ -93,10 +96,12 @@ class DataHandler:
         return names
 
     def save(self):
-        print('Unable to save in viewer mode.')
-        # self._df.dropna(inplace=True, subset=self.columns)
-        # self._df.to_csv(self.csv_path, index=False)
-        # self.load_current_dataframe()
+        if config.annotate:
+            self._df.dropna(inplace=True, subset=self.columns)
+            self._df.to_csv(self.annotations_path, index=False)
+            self.load_current_dataframe()
+        else:
+            print('Unable to save in viewer mode.')
 
     def intersect(self, video_name, time):
         df = self.df
