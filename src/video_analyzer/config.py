@@ -28,7 +28,7 @@ _skeleton_cfg = {
 _facial_cfg = {
     'net_name': 'BARNI',
     'columns': ['video', 'start_time', 'end_time', 'start_frame', 'end_frame', 'emotion', 'annotator'],
-    'actions': ['anger', 'disgust', 'fear', 'happiness', 'sadness', 'surprise'],
+    'actions': ['anger', 'disgust', 'fear', 'happiness', 'sadness', 'surprise', 'neutral', 'other', 'directed'],
     'no_act': 'neutral',
     'movement_col': 'emotion',
     'ann_extension': 'et=0.6_ft=0.985_annotations',
