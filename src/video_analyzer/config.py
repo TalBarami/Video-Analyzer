@@ -35,6 +35,18 @@ _facial_cfg = {
     'detection_file_extension': '.pkl'
 }
 
+_assessment_cfg = {
+    'net_name': 'SEGMENTATION',
+    'columns': ['video', 'start_time', 'end_time', 'start_frame', 'end_frame', 'segment', 'calc_date', 'annotator'],
+    'actions': ['Assembling a Puzzle', 'Name Response', 'Miniature Toys - Alone', 'Miniature Toys - Clinician', 'Free Talk', 'Free Play',
+                'Brush Teeth', 'Describing Picture', 'Reading a Book', 'Joint Attention', 'Birthday Partyh', 'Snack Time', 'Blowing Bubbles',
+                'Baloon', 'Comics', 'Interview', 'Invent a Story', 'Other'],
+    'no_act': 'Unknown',
+    'movement_col': 'segment',
+    'ann_extension': 'annotations',
+    'detection_file_extension': '.pkl'
+}
+
 _vis_init = {
     'smm': lambda path, res: SkeletonVisualizer(path, res),
     'facial': lambda path, res: FacialVisualizer(path, res),
