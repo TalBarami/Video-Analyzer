@@ -1,3 +1,6 @@
+from pathlib import Path
+from os import path as osp
+
 import numpy as np
 import pandas as pd
 from skeleton_tools.openpose_layouts.body import COCO_LAYOUT
@@ -13,11 +16,12 @@ class Visualizer:
         self.layout = data_layout
         self.eps = epsilon
         self.extractor = extractor_initializer(self.layout)
-        self.data = self.extractor(self.model_output_path)
+        filepath = Path(model_output_path)
+        self.data = self.extractor({'paths': {'processed': filepath.parents[2]}, 'name': osp.splitext(filepath.name)[0]})
         self.blur_painter = BlurPainter(self.data, active=blur_face)
         self.score_painter = ScorePainter()
-        # local_painters = [GraphPainter(self.layout, epsilon=self.eps, alpha=0.4), BoxPainter(), self.score_painter]
-        local_painters = [GraphPainter(self.layout, epsilon=self.eps, alpha=0.4), BoxPainter()]
+        local_painters = [GraphPainter(self.layout, epsilon=self.eps, alpha=0.4, color=[(159, 180, 255), (255, 211, 110), (153, 255, 205), (255, 245, 109)])]
+        # local_painters = [GraphPainter(self.layout, epsilon=self.eps, alpha=0.4), BoxPainter()]
         self.global_painters = [self.blur_painter] + [GlobalPainter(p) for p in local_painters]
         self.user_adjust = self.auto_adjust
         self.org_resolution = np.array(org_resolution)
