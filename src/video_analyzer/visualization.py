@@ -17,7 +17,7 @@ class Visualizer:
         self.eps = epsilon
         self.extractor = extractor_initializer(self.layout)
         filepath = Path(model_output_path)
-        self.data = self.extractor({'paths': {'processed': filepath.parents[2]}, 'name': osp.splitext(filepath.name)[0]})
+        self.data = self.extractor({'paths': {'processed': str(filepath.parents[2])}, 'name': osp.splitext(filepath.name)[0]})
         self.blur_painter = BlurPainter(self.data, active=blur_face)
         self.score_painter = ScorePainter()
         local_painters = [GraphPainter(self.layout, epsilon=self.eps, alpha=0.4, color=[(159, 180, 255), (255, 211, 110), (153, 255, 205), (255, 245, 109)])]

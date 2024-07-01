@@ -26,20 +26,19 @@ class DataHandler:
         if config.annotate:
             self._df = pd.read_csv(self.annotations_path)[self.columns] if osp.isfile(self.annotations_path) else pd.DataFrame(columns=self.columns)
         else:
-            df = collect_labels(config['detections_homedir'], model_name=config['model_name'], file_extension=config['ann_extension'])
-            df['video_fullname'] = df['video'].copy()
-            df['video'] = df['video'].apply(lambda x: osp.splitext(x)[0])
-            df = df[df[mv_col] != config['no_act']]
-            if config['annotations_file'] is not None:
-                human_ann = pd.read_csv(config['annotations_file'])
-                human_ann['assessment'] = human_ann['video'].apply(lambda v: '_'.join(v.split('_')[:-2]))
-                human_ann['stereotypical_score'] = 1
-                human_ann['annotator'] = 'Human'
-                df = pd.concat((df, human_ann))
-            # df = pd.read_csv(self.csv_path)[self.columns] if os.path.isfile(self.csv_path) else pd.DataFrame(columns=self.columns)
-            # df = pd.read_csv(r'Z:\Users\TalBarami\JORDI_50_vids_benchmark\annotations\human_post_qa.csv')
-            df[mv_col] = df[mv_col].apply(self.fix_label)
-            df.dropna(inplace=True, subset=self.columns)
+            # df = collect_labels(config['detections_homedir'], model_name=config['model_name'], file_extension=config['ann_extension'])
+            # df['video_fullname'] = df['video'].copy()
+            # df['video'] = df['video'].apply(lambda x: osp.splitext(x)[0])
+            # df = df[df[mv_col] != config['no_act']]
+            # if config['annotations_file'] is not None:
+            #     human_ann = pd.read_csv(config['annotations_file'])
+            #     human_ann['assessment'] = human_ann['video'].apply(lambda v: '_'.join(v.split('_')[:-2]))
+            #     human_ann['stereotypical_score'] = 1
+            #     human_ann['annotator'] = 'Human'
+            #     df = pd.concat((df, human_ann))
+            # df[mv_col] = df[mv_col].apply(self.fix_label)
+            # df.dropna(inplace=True, subset=self.columns)
+            df = pd.DataFrame(columns=self.columns)
             self._df = df
 
     def adjust_row(self, row, adj, fps):

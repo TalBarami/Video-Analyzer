@@ -12,7 +12,7 @@ import cv2
 import numpy as np
 from skeleton_tools.utils.constants import NET_NAME
 from skeleton_tools.utils.tools import get_video_properties
-from tendo import singleton
+# from tendo import singleton
 
 from src.video_analyzer.data_handler import DataHandler
 from src.video_analyzer.video_player import VideoPlayer
@@ -454,7 +454,7 @@ class Display:
 
 
 if __name__ == '__main__':
-    me = singleton.SingleInstance()
+    # me = singleton.SingleInstance()
     d = Display()
     d.run()
 
