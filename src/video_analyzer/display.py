@@ -32,7 +32,7 @@ class Display:
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
         self.root.title('Annotations')
         # self.root.iconbitmap('resources/annotations.ico')
-        self.video_seek_last_click = - np.infty
+        self.video_seek_last_click = - np.inf
         self.video_sync = VideoSync(lambda: self.videos, self.set_play_button_name, self.set_scale_bar)
         self.selected_classes = {action: BooleanVar() for action in self.data_handler.actions}
 
