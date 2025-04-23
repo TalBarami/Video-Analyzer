@@ -10,26 +10,24 @@ import PIL.Image
 import PIL.ImageTk
 import cv2
 import numpy as np
-from skeleton_tools.utils.constants import NET_NAME
-from skeleton_tools.utils.tools import get_video_properties
-# from tendo import singleton
 
 from src.video_analyzer.data_handler import DataHandler
 from src.video_analyzer.video_player import VideoPlayer
 from src.video_analyzer.video_sync import VideoSync
-from video_analyzer.config import config, mv_col, visualizer
+from video_analyzer.config import config, mv_col, visualizer, NET_NAME
 from video_analyzer.visualization import PlaceHolderVisualizer
 
 
 class Display:
     video_types = [('Video files', '*.avi;*.mp4')]
 
-    def __init__(self):
+    def __init__(self, annotator):
+        self.annotator = annotator
         self.video_paths = None
         self.videos = []
         self.detections_dir = config['detections_homedir']
 
-        self.data_handler = DataHandler(videos=lambda: self.videos)
+        self.data_handler = DataHandler(self.annotator, videos=lambda: self.videos)
         self.root = Tk()
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
         self.root.title('Annotations')
@@ -101,74 +99,37 @@ class Display:
         self.root.nametowidget('labelingPanel.manageFrame.videoFrame.seekFrame.scaleBar').config(to=length, tickinterval=length / 10)
 
     def create_video_player(self, video_path, idx):
+
         video_name = osp.basename(video_path)
         videos_frame = self.root.nametowidget('mediaPanel.videosFrame')
         basename, ext = osp.splitext(video_name)
-        main_frame = Frame(videos_frame, name=f'video_{idx}', highlightthickness=2)
-        main_frame.pack(side=LEFT, fill=BOTH, expand=0)
+
+        main_frame = Frame(videos_frame, name=f'video_{idx}', highlightthickness=2, bd=1)
+        main_frame.pack(side=LEFT, fill=Y, padx=1, pady=1)  # Tighten spacing
 
         header_frame = Frame(main_frame)
         name_label = Label(header_frame, text=video_name, width=60)
-        name_label.pack(side=TOP)
+        name_label.pack(side=TOP, anchor='w', padx=2)
         previously_recorded = self.data_handler.any(basename)
         name_label.config(fg='Red' if previously_recorded else None)
-
-        header_frame.pack(side=TOP)
+        header_frame.pack(side=TOP, fill=X)
 
         video_label = Label(main_frame, name='label')
         video_label.pack(side=TOP, fill=BOTH, expand=1)
 
         data_frame = Frame(main_frame)
-
-        # color_frame = Frame(data_frame)
-        # Label(color_frame, text='Child Color:').pack(side=LEFT, fill=X, expand=0)
-        # color_combobox = ttk.Combobox(color_frame, name=f'color_{idx}', state='readonly', width=27,
-        #                               values=self.data_handler.color_items)
-        # color_combobox.current(0)
-        # color_combobox.pack(side=RIGHT, fill=X, expand=1, padx=20)
-        # color_frame.pack(side=TOP, fill=X, expand=1)
-        # detections_path = osp.join(self.detections_dir, basename, f'{basename}{config["detection_file_extension"]}')
-        detections_path = osp.join(self.detections_dir, basename, config['net_name'].lower(), f'{basename}{config["detection_file_extension"]}')
-        if osp.exists(detections_path):
-            resolution, fps, frame_count, length = get_video_properties(video_path)
-            vis = visualizer(detections_path, resolution)
-        else:
-            vis = PlaceHolderVisualizer()
-
-        detection_var = StringVar()
-        detection_var.set(str(vis.auto_adjust()))
-        detection_frame = Frame(data_frame)
-        Label(detection_frame, text='Detection adjust:').pack(side=LEFT, fill=X, expand=0)
-
-        def validate_skeleton():
-            self.data_handler.load_current_dataframe()
-            return True
-
-        def user_adjust():
-            v = detection_var.get()
-            r = 0
-            if v.strip('-').isnumeric():
-                r = int(v)
-            return r
-        vis.user_adjust = user_adjust
-
-        Entry(detection_frame, textvariable=detection_var, validate='focusout', validatecommand=validate_skeleton).pack(side=RIGHT, fill=X, expand=1, padx=20)
-        detection_frame.pack(side=BOTTOM, fill=X, expand=1)
+        vis = PlaceHolderVisualizer()
 
         time_var = DoubleVar()
-        Label(data_frame, textvariable=time_var, width=10).pack(side=TOP)
+        Label(data_frame, textvariable=time_var, width=10).pack(side=TOP, anchor='center', pady=1)
 
         label_var = StringVar()
-        Label(data_frame, textvariable=label_var, width=50).pack(side=TOP)
+        Label(data_frame, textvariable=label_var, width=50).pack(side=TOP, anchor='center', pady=1)
 
         include_video = IntVar(value=1)
-        Checkbutton(data_frame, text='Include Video', variable=include_video).pack(side=TOP)
+        Checkbutton(data_frame, text='Include Video', variable=include_video).pack(side=TOP, anchor='center', pady=1)
 
-        data_frame.pack(side=LEFT, fill=BOTH, expand=1)
-        # skeleton_pkl = read_pkl(file_path) if osp.isfile(file_path) else None
-        # if skeleton_pkl is not None and 'adjust' in skeleton_pkl.keys():
-        #     skeleton_var.set(str(0 if skeleton_pkl['adjust'] < 12 else skeleton_pkl['adjust']))
-        # vis = MMPoseVisualizer(COCO_LAYOUT)
+        data_frame.pack(side=TOP, fill=X)
 
         def update_function(frame, frame_number, current_time, duration):
             if self.video_sync.stop_thread:
@@ -178,14 +139,6 @@ class Display:
             if self.video_sync.with_skeleton.get():
                 frame = vis.draw(frame, frame_number)
             frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-            # if skeleton_pkl and self.video_sync.with_skeleton.get():
-            #     i = int(frame_number) + get_skeleton_adjust()
-            #     if i >= 0:
-            #         frame = vis.draw_skeletons(frame,
-            #                                    skeleton['keypoint'][:, i, :, :],
-            #                                    skeleton_pkl['keypoint_score'][:, i, :],
-            #                                    child_id=(skeleton_pkl['child_ids'][i] if 'child_ids' in skeleton_pkl.keys() else None),
-            #                                    thickness=2)
 
             time = np.round(current_time, 1)
             duration = np.round(duration, 1)
@@ -196,13 +149,12 @@ class Display:
                 act = set(labels_recorded[mv_col])
                 annotators = set(labels_recorded['annotator'])
                 labels_recorded = ','.join(act)
-                # labels_recorded = ','.join(act if type(act) == list else eval(act)) if type(act) == list or act[0] == '[' else act
                 color = 'purple' if (NET_NAME in annotators and len(annotators) > 1) else 'green' if NET_NAME in annotators else 'blue'
             else:
                 labels_recorded = ''
                 color = 'white'
 
-            main_frame.config(highlightbackground=color, highlightthickness=5)
+            main_frame.config(highlightbackground=color, highlightthickness=3)
             label_var.set(labels_recorded)
 
             frame_image = PIL.ImageTk.PhotoImage(image=PIL.Image.fromarray(frame))
@@ -212,15 +164,16 @@ class Display:
         def destroy_function():
             main_frame.destroy()
 
-        return VideoPlayer(video_path=video_path,
-                           video_sync=self.video_sync,
-                           video_checked=lambda: include_video.get(),
-                           visualizer=vis,
-                           adjust_function=user_adjust,
-                           init_function=vis.set_resolution,
-                           update_function=update_function,
-                           destroy_function=destroy_function,
-                           n_videos=len(self.video_paths))
+        return VideoPlayer(
+            video_path=video_path,
+            video_sync=self.video_sync,
+            video_checked=lambda: include_video.get(),
+            visualizer=vis,
+            init_function=vis.set_resolution,
+            update_function=update_function,
+            destroy_function=destroy_function,
+            n_videos=len(self.video_paths)
+        )
 
     def set_play_button_name(self, value=None):
         self.root.nametowidget('mediaPanel.playButton').config(text=value if value else 'Pause' if self.video_sync.is_playing else 'Play')
@@ -452,10 +405,28 @@ class Display:
             t.daemon = 1
             t.start()
 
+def select_annotator(annotators):
+    offset = 1
+    while True:
+        print(f'Identify:')
+        for i, e in enumerate(annotators):
+            print(f'{i + offset}. {e}')
+        result = input()
+        result = [s for s in result.split(' ') if s]
+        if len(result) > 0 and all(s.isdigit() and (offset <= int(s) < len(annotators) + offset) for s in result):
+            result = [int(s) - offset for s in result][0]
+            print(f'You are identifying as: {annotators[result]} - ARE YOU SURE? y/n')
+            ans = input()
+            if ans == 'y':
+                return annotators[result]
+            continue
+        print('Error: Wrong selection.')
 
 if __name__ == '__main__':
+    annotators = ['Mayan', 'Shira', 'Tal']
+    ann = select_annotator(annotators)
     # me = singleton.SingleInstance()
-    d = Display()
+    d = Display(ann)
     d.run()
 
     running = threading.enumerate()

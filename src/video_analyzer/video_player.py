@@ -4,16 +4,16 @@ from os import path as osp
 import cv2
 import imutils
 import numpy as np
+from taltools.cv.videos import get_video_properties
 
 
 class VideoPlayer:
-    def __init__(self, video_path, video_sync, video_checked, visualizer, adjust_function, init_function, update_function, destroy_function, n_videos):
+    def __init__(self, video_path, video_sync, video_checked, visualizer, init_function, update_function, destroy_function, n_videos):
         self.video_path = video_path
         self.video_name = osp.splitext(osp.basename(video_path))[0]
         self.video_sync = video_sync
         self.video_checked = video_checked
         self.visualizer = visualizer
-        self.adjust_function = adjust_function
         self.update_function = update_function
         self.destroy_function = destroy_function
         self.n_videos = n_videos
@@ -23,10 +23,11 @@ class VideoPlayer:
         if not self.cap.isOpened():
             raise ValueError("Unable to open video source", self.video_path)
 
-        self.fps = self.cap.get(cv2.CAP_PROP_FPS)
+        _, self.fps, self.frames_count, self.duration = get_video_properties(self.video_path)
 
-        self.frames_count = self.cap.get(cv2.CAP_PROP_FRAME_COUNT)
-        self.duration = self.frames_count / self.fps
+        # self.fps = self.cap.get(cv2.CAP_PROP_FPS)
+        # self.frames_count = self.cap.get(cv2.CAP_PROP_FRAME_COUNT)
+        # self.duration = self.frames_count / self.fps
 
         self.width, self.height = self.calc_resolution()
         init_function(self.width, self.height)
@@ -34,8 +35,8 @@ class VideoPlayer:
         print(f'Playing {self.video_path} on {self.fps} fps, total {self.frames_count} frames, duration {self.duration}')
 
     def calc_resolution(self):
-        max_width = 700 - 50 * (self.n_videos - 1)
-        max_height = 700 - 50 * (self.n_videos - 1)
+        max_width = 600 - 40 * (self.n_videos - 1)
+        max_height = 600 - 40 * (self.n_videos - 1)
 
         width = self.cap.get(cv2.CAP_PROP_FRAME_WIDTH)
         height = self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
@@ -91,7 +92,7 @@ class VideoPlayer:
             print(f'Error: {v}')
         self.lock.release()
 
-    def seek_time(self, time, delta=0):
+    def seek_time(self, time, delta=0.0):
         time = np.clip(float(delta) + float(time), 0.0, self.duration)
 
         self.lock.acquire()

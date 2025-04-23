@@ -9,12 +9,11 @@ from os import path as osp
 from video_analyzer.config import config, mv_col
 
 pd.set_option('display.expand_frame_repr', False)
-from skeleton_tools.utils.constants import NET_NAME
-from skeleton_tools.utils.evaluation_utils import collect_labels
 
 class DataHandler:
-    def __init__(self, videos):
-        self.annotations_path = osp.join('resources', 'annotations.csv')
+    def __init__(self, annotator, videos):
+        self.annotator = annotator
+        self.annotations_path = osp.join(config['ann_dir'], f'{annotator}.csv')
         self.columns = config['columns']
         self.actions = config['actions']
         self._df = None
@@ -41,20 +40,11 @@ class DataHandler:
             df = pd.DataFrame(columns=self.columns)
             self._df = df
 
-    def adjust_row(self, row, adj, fps):
-        if row['annotator'] == NET_NAME:
-            adj = -adj
-            row['start_frame'] += adj
-            row['end_frame'] += adj
-            row['start_time'] += adj / fps
-            row['end_time'] += adj / fps
-        return row
-
     def load_current_dataframe(self):
-        videos = {v.video_name: (v.adjust_function(), v.fps) for v in self.videos()}
+        videos = {v.video_name: v.fps for v in self.videos()}
         dfs = [self._df[self._df['video'] == v].copy() for v in videos.keys()]
-        for i, df in enumerate(dfs):
-            dfs[i] = df.apply(lambda row: self.adjust_row(row, *videos[row['video']]), axis=1)
+        # for i, df in enumerate(dfs):
+        #     dfs[i] = df.apply(lambda row: self.adjust_row(row, *videos[row['video']]), axis=1)
         self.df = pd.concat(dfs) if len(dfs) > 0 else pd.DataFrame(columns=self.columns)
 
     def add(self, videos, start, end, movements):
@@ -80,7 +70,8 @@ class DataHandler:
             if not sub_df.empty:
                 ms = list(it.chain(*sub_df['movement'].tolist())) + movements
                 self._df = self._df.drop(sub_df.index)
-            self._df.loc[self._df.index.max() + 1] = [vn, st, et, sf, ef, ms, cd, ann]
+            idx = self._df.index.max() + 1 if not self._df.empty else 0
+            self._df.loc[idx] = [vn, st, et, sf, ef, ms, cd, ann]
         added = [v.video_name for v in videos]
         self.save()
         return added
