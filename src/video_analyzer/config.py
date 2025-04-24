@@ -50,7 +50,7 @@ _assessment_cfg = {
 _interactions_cfg = {
     'net_name': 'INTERACTIONS',
     'columns': ['video', 'start_time', 'end_time', 'start_frame', 'end_frame', 'action', 'calc_date', 'annotator'],
-    'actions': ['Giving', 'Showing', 'Pointing', 'Gestures', 'Turn Towards', 'Turn Away', 'Other'],
+    'actions': ['Giving', 'Showing', 'Pointing', 'Gestures', 'Turn Towards', 'Turn Away'],
     'no_act': 'no_act',
     'movement_col': 'action',
     'ann_extension': 'annotations',

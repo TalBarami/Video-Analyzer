@@ -232,13 +232,15 @@ class Display:
         annotations_frame = Frame(dataInputFrame, name='annotationsFrame')
         Label(annotations_frame, name='annotationsLabel', text='Classes:').pack(side=LEFT, fill=X, padx=50)
         classesFrame = Frame(annotations_frame, name='classesFrame', bd=1, relief=SOLID)
+        p = Frame(classesFrame, name=f'classRow')
         for i, (name, var) in enumerate(self.selected_classes.items()):
-            if i % 5 == 0 and i != 15:
-                p = Frame(classesFrame, name=f'classRow_{i // 5}')
+            # if i % 5 == 0 and i != 15:
+            #     p = Frame(classesFrame, name=f'classRow_{i // 5}')
             cb = Checkbutton(p, text=name, variable=var)
             cb.pack(side=LEFT, fill=X)
-            if i % 5 == 3:
-                p.pack(fill=BOTH, expand=1)
+            # if i % 5 == 4:
+            #     p.pack(fill=BOTH, expand=1)
+        p.pack(side=LEFT, fill=BOTH, expand=1)
         # ttk.Combobox(movementFrame, name='movementCombobox', state='readonly', values=self.data_handler.movements).pack(
         #     side=LEFT, fill=X, ipadx=60, expand=0)
 
