@@ -24,6 +24,7 @@ class DataHandler:
     def load(self):
         if config.annotate:
             self._df = pd.read_csv(self.annotations_path)[self.columns] if osp.isfile(self.annotations_path) else pd.DataFrame(columns=self.columns)
+            self._df[mv_col] = self._df[mv_col].apply(lambda a: eval(a))
         else:
             # df = collect_labels(config['detections_homedir'], model_name=config['model_name'], file_extension=config['ann_extension'])
             # df['video_fullname'] = df['video'].copy()
