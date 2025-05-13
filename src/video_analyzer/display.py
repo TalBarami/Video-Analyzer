@@ -428,7 +428,7 @@ if __name__ == '__main__':
     annotators = ['Mayan', 'Shira', 'Tal']
     ann = select_annotator(annotators)
     # me = singleton.SingleInstance()
-    d = Display(ann)
+    d = Display(f'{ann.lower()}_annotations')
     d.run()
 
     running = threading.enumerate()
